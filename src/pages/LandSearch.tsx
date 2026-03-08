@@ -492,7 +492,4 @@ const LandSearch = () => {
   );
 };
 
-// Need the FileCheck icon import at top
-import { FileCheck as FileCheckIcon } from "lucide-react";
-
 export default LandSearch;
