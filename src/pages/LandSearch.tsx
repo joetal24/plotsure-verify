@@ -351,7 +351,7 @@ const LandSearch = () => {
                       {result.location}, Kampala
                     </div>
                   </div>
-                  <div className="h-28">
+                  <div style={{ height: 120 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={result.priceTrend}>
                         <XAxis dataKey="month" tick={{ fontSize: 10 }} />
