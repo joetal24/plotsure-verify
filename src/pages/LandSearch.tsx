@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Loader2, MapPin, ShieldCheck, AlertTriangle, DollarSign, Info, Phone } from "lucide-react";
+import { CheckCircle2, Loader2, MapPin, ShieldCheck, AlertTriangle, DollarSign, Info, Phone, FileCheck } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
