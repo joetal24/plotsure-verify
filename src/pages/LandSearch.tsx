@@ -340,17 +340,13 @@ const LandSearch = () => {
                     <span className="text-muted-foreground">Land Cover</span>
                     <span className="bg-accent px-2 py-0.5 rounded text-xs font-medium">{result.gisFeatures.landCover}</span>
                   </div>
-                  <div className="h-40 rounded overflow-hidden border relative">
-                    <img
-                      src={`https://tile.openstreetmap.org/13/4654/4338.png`}
-                      alt={`Map of ${result.location}`}
-                      className="w-full h-full object-cover"
+                  <div className="h-48 rounded overflow-hidden border relative">
+                    <iframe
+                      title={`Map of ${result.location}`}
+                      className="w-full h-full border-0"
+                      src="https://www.openstreetmap.org/export/embed.html?bbox=32.55%2C0.32%2C32.62%2C0.37&layer=mapnik&marker=0.3476%2C32.5825"
+                      loading="lazy"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg">
-                        <MapPin className="h-5 w-5" />
-                      </div>
-                    </div>
                     <div className="absolute bottom-1 left-1 bg-card/90 text-xs px-2 py-0.5 rounded font-body">
                       {result.location}, Kampala
                     </div>
