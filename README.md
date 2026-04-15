@@ -1,73 +1,149 @@
-# Welcome to your Lovable project
+# PlotSure — Land Verification Platform for Uganda
 
-## Project info
+A land verification platform focused on Uganda. Enables users to verify land ownership, assess fraud risk, estimate price ranges, and generate tamper-evident certificates.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Tech Stack
 
-## How can I edit this code?
+- **Frontend**: React + Vite + TypeScript + shadcn/ui + Tailwind CSS
+- **Backend**: FastAPI (Python)
+- **Auth & Database**: Supabase (PostgreSQL + Auth + Storage)
 
-There are several ways of editing your application.
+## Quick Start (Docker)
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- [Docker](https://docker.com) installed
+- [Docker Compose](https://docs.docker.com/compose/) installed
 
-Changes made via Lovable will be committed automatically to this repo.
+### Steps
 
-**Use your preferred IDE**
+1. **Create a Supabase project**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+   - Go to [supabase.com](https://supabase.com) and sign up
+   - Create a new project
+   - Go to **Settings → API** and copy your credentials
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. **Configure environment variables**
 
-Follow these steps:
+   ```bash
+   # Frontend (root)
+   cp .env.example .env.local
+   # Edit .env.local with your Supabase credentials
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+   # Backend
+   cp backend/.env.example backend/.env
+   # Edit backend/.env with your Supabase credentials
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. **Set up the database**
 
-# Step 3: Install the necessary dependencies.
-npm i
+   - Go to Supabase Dashboard → **SQL Editor**
+   - Copy and run the contents of `backend/supabase_schema.sql`
+   - Go to **Storage** → **New Bucket**
+   - Create a bucket named `certificates` and set it to **public**
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+4. **Run the application**
+
+   ```bash
+   docker-compose up --build
+   ```
+
+5. **Access the application**
+
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+
+## Quick Start (Local Development)
+
+### Backend
+
+```bash
+cd backend
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate  # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Copy env file
+cp .env.example .env
+
+# Run the server
+uvicorn app.main:app --reload --port 8000
+```
+
+### Frontend
+
+```bash
+# Install dependencies
+npm install
+
+# Copy env file
+cp .env.example .env.local
+
+# Run the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## API Endpoints
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/verify` | ✅ JWT | Verify a land plot |
+| GET | `/verify/{id}` | ✅ JWT | Get verification result |
+| GET | `/history` | ✅ JWT | Get user's search history |
+| POST | `/certificates/{search_id}` | ✅ JWT | Generate certificate |
+| GET | `/certificates/{id}` | ✅ JWT | Get certificate |
+| GET | `/certificates/verify/{hash}` | ❌ Public | Verify certificate by hash |
+| GET | `/health` | ❌ Public | Health check |
 
-**Use GitHub Codespaces**
+## Environment Variables
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Frontend (.env.local)
 
-## What technologies are used for this project?
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_URL=http://localhost:8000
+```
 
-This project is built with:
+### Backend (backend/.env)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-jwt-secret
+FRONTEND_URL=http://localhost:5173
+```
 
-## How can I deploy this project?
+## Project Structure
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+```
+plotsure-verify/
+├── backend/
+│   ├── app/
+│   │   ├── main.py          # FastAPI app
+│   │   ├── config.py        # Settings
+│   │   ├── auth.py         # JWT validation
+│   │   ├── database.py     # Supabase client
+│   │   ├── schemas.py     # Pydantic models
+│   │   ├── routers/       # API endpoints
+│   │   └── services/     # Business logic
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── supabase_schema.sql
+├── src/                    # React frontend
+├── docker-compose.yml
+├── Dockerfile.frontend
+├── .env.example
+└── README.md
+```
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+MIT

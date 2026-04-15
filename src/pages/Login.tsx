@@ -9,24 +9,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
-const roles: UserRole[] = ["Land Buyer", "Land Agent", "Bank Loan Officer"];
+const roles: { value: UserRole; label: string }[] = [
+  { value: "land_buyer", label: "Land Buyer" },
+  { value: "admin", label: "Admin" },
+];
 
 const Login = () => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
   const { toast } = useToast();
 
-  const [loginForm, setLoginForm] = useState({ email: "", password: "", role: "" as string });
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [regForm, setRegForm] = useState({ name: "", email: "", password: "", confirmPassword: "", role: "" as string });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const validateLogin = () => {
     const e: Record<string, string> = {};
     if (!loginForm.email) e.lemail = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(loginForm.email)) e.lemail = "Invalid email";
     if (!loginForm.password) e.lpassword = "Password is required";
-    if (!loginForm.role) e.lrole = "Select a role";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -44,17 +48,29 @@ const Login = () => {
     return Object.keys(e).length === 0;
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!validateLogin()) return;
-    login(loginForm.email, loginForm.password, loginForm.role as UserRole);
+    setSubmitting(true);
+    const { error } = await login(loginForm.email, loginForm.password);
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Login failed", description: error, variant: "destructive" });
+      return;
+    }
     toast({ title: "Welcome back!", description: "Login successful." });
     navigate("/dashboard");
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!validateRegister()) return;
-    register(regForm.name, regForm.email, regForm.password, regForm.role as UserRole);
-    toast({ title: "Account created!", description: "Welcome to PlotSure." });
+    setSubmitting(true);
+    const { error } = await register(regForm.name, regForm.email, regForm.password, regForm.role as UserRole);
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Registration failed", description: error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Account created!", description: "Welcome to PlotSure. Check your email to confirm." });
     navigate("/dashboard");
   };
 
@@ -94,17 +110,10 @@ const Login = () => {
                   <Input className={inputClass} type="password" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} />
                   {errors.lpassword && <p className="text-xs text-destructive mt-1">{errors.lpassword}</p>}
                 </div>
-                <div>
-                  <Label>Role</Label>
-                  <Select value={loginForm.role} onValueChange={v => setLoginForm(f => ({ ...f, role: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
-                    <SelectContent>
-                      {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {errors.lrole && <p className="text-xs text-destructive mt-1">{errors.lrole}</p>}
-                </div>
-                <Button className="w-full" onClick={handleLogin}>Login</Button>
+                <Button className="w-full" onClick={handleLogin} disabled={submitting}>
+                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Login
+                </Button>
               </TabsContent>
 
               <TabsContent value="register" className="space-y-4">
@@ -133,12 +142,15 @@ const Login = () => {
                   <Select value={regForm.role} onValueChange={v => setRegForm(f => ({ ...f, role: v }))}>
                     <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
                     <SelectContent>
-                      {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                      {roles.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   {errors.rrole && <p className="text-xs text-destructive mt-1">{errors.rrole}</p>}
                 </div>
-                <Button className="w-full" onClick={handleRegister}>Register</Button>
+                <Button className="w-full" onClick={handleRegister} disabled={submitting}>
+                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Register
+                </Button>
               </TabsContent>
             </Tabs>
           </CardContent>

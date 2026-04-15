@@ -1,0 +1,59 @@
+# ============================================
+# Docker Ignore File
+# ============================================
+
+# Git
+.git
+.gitignore
+
+# Backend Python environment
+backend/venv
+backend/.venv
+backend/__pycache__
+backend/*.pyc
+backend/*.pyo
+backend/.env
+backend/.env.local
+
+# Frontend environment (secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Documentation
+README.md
+ANTIGRAVITY.md
+LICENSE
+
+# Test files
+src/test
+*.test.ts
+*.test.tsx
+
+# CI/CD
+.github
+.gitlab-ci.yml
+enkinsfile
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Node (will be rebuilt in container)
+node_modules
+
+venv
+__pycache__
+dist
+build

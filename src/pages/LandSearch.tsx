@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearch, type PlotDetails, type SearchMethod, type LandType, type Purpose } from "@/contexts/SearchContext";
+import { useSearch, type PlotDetails, type SearchMethod, type LandType } from "@/contexts/SearchContext";
 import AppTopBar from "@/components/AppTopBar";
 import RiskBadge from "@/components/RiskBadge";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Loader2, MapPin, ShieldCheck, AlertTriangle, DollarSign, Info, Phone, FileCheck } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
+import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle, DollarSign, Info, FileCheck } from "lucide-react";
 
 const documents = [
   "Duplicate Certificate of Title (original)",
@@ -31,12 +28,11 @@ const LandSearch = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { addSearch, currentResult, setCurrentResult } = useSearch();
+  const { addSearch, currentResult, setCurrentResult, loading: searchLoading, error: searchError } = useSearch();
   const { toast } = useToast();
 
   const initialStep = parseInt(searchParams.get("step") || "1");
   const [step, setStep] = useState(currentResult && initialStep === 3 ? 3 : 1);
-  const [showPayment, setShowPayment] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [checkedDocs, setCheckedDocs] = useState<boolean[]>(new Array(documents.length).fill(false));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -45,11 +41,7 @@ const LandSearch = () => {
     searchMethod: "title",
     landType: undefined,
     plotSizeUnit: "Decimals",
-    purpose: undefined,
   });
-
-  const [phone, setPhone] = useState("");
-  const [network, setNetwork] = useState("");
 
   useEffect(() => {
     if (!user) navigate("/login");
@@ -70,58 +62,43 @@ const LandSearch = () => {
     }
     if (!form.landType) e.landType = "Required";
     if (!form.plotSize || form.plotSize <= 0) e.plotSize = "Enter valid size";
-    if (!form.purpose) e.purpose = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!validate()) return;
-    setShowPayment(true);
-  };
-
-  const handlePayment = () => {
-    if (!phone || phone.length < 10) {
-      toast({ title: "Invalid phone", description: "Enter a valid phone number.", variant: "destructive" });
-      return;
-    }
-    if (!network) {
-      toast({ title: "Select network", description: "Choose MTN or Airtel.", variant: "destructive" });
-      return;
-    }
-    setShowPayment(false);
-    toast({ title: "Payment confirmed", description: "UGX 10,000 received via Mobile Money." });
-    startAnalysis();
-  };
-
-  const startAnalysis = () => {
     setStep(2);
     setLoadingStep(0);
+
+    // Show loading steps while API call runs
     let s = 0;
     const interval = setInterval(() => {
       s++;
       setLoadingStep(s);
-      if (s >= 4) {
-        clearInterval(interval);
-        const result = addSearch(form as PlotDetails);
-        setCurrentResult(result);
-        toast({ title: "Analysis complete", description: "Your PlotSure assessment is ready." });
-        setTimeout(() => setStep(3), 500);
-      }
-    }, 1000);
+      if (s >= 3) clearInterval(interval);
+    }, 800);
+
+    try {
+      await addSearch(form as PlotDetails);
+      clearInterval(interval);
+      setLoadingStep(3);
+      toast({ title: "Analysis complete", description: "Your PlotSure assessment is ready." });
+      setTimeout(() => setStep(3), 500);
+    } catch (err: any) {
+      clearInterval(interval);
+      toast({ title: "Verification failed", description: err.message || "Please try again.", variant: "destructive" });
+      setStep(1);
+    }
   };
 
   const result = currentResult;
 
   const loadingSteps = [
-    "UgNLIS title verification complete",
-    "GIS spatial features extracted (road proximity, building density, land cover)",
-    "scikit-learn price prediction model executed",
-    "Isolation Forest anomaly detection + Neo4j fraud scan complete",
+    "Validating plot reference...",
+    "Fetching ownership data from UgNLIS...",
+    "Computing risk assessment & price estimate...",
   ];
-
-  const riskColor = (r: string) => r === "LOW" ? "text-success" : r === "MEDIUM" ? "text-warning" : "text-destructive";
-  const riskBg = (r: string) => r === "LOW" ? "bg-success" : r === "MEDIUM" ? "bg-warning" : "bg-destructive";
 
   if (!user) return null;
 
@@ -144,7 +121,7 @@ const LandSearch = () => {
           ))}
         </div>
 
-        {/* Step 1 */}
+        {/* Step 1 - Input Form */}
         {step === 1 && (
           <Card>
             <CardHeader>
@@ -233,29 +210,15 @@ const LandSearch = () => {
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Asking Price (UGX) <span className="text-muted-foreground text-xs">optional</span></Label>
-                  <Input type="number" min={0} value={form.askingPrice || ""} onChange={e => updateForm({ askingPrice: parseFloat(e.target.value) || undefined })} />
-                </div>
-                <div>
-                  <Label>Purpose</Label>
-                  <Select value={form.purpose || ""} onValueChange={v => updateForm({ purpose: v as Purpose })}>
-                    <SelectTrigger><SelectValue placeholder="Select purpose" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Buying">Buying</SelectItem>
-                      <SelectItem value="Collateral Assessment">Collateral Assessment</SelectItem>
-                      <SelectItem value="Investment Due Diligence">Investment Due Diligence</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.purpose && <p className="text-xs text-destructive mt-1">{errors.purpose}</p>}
-                </div>
+              <div>
+                <Label>Asking Price (UGX) <span className="text-muted-foreground text-xs">optional</span></Label>
+                <Input type="number" min={0} value={form.askingPrice || ""} onChange={e => updateForm({ askingPrice: parseFloat(e.target.value) || undefined })} />
               </div>
 
               <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
                 <Info className="h-5 w-5 text-primary-mid mt-0.5 shrink-0" />
                 <p className="text-sm text-foreground font-body">
-                  A UGX 10,000 UgNLIS verification fee will be charged via Mobile Money to retrieve the official title search letter.
+                  PlotSure will verify ownership data, compute a deterministic risk score, and estimate the fair price range for this plot.
                 </p>
               </div>
 
@@ -266,7 +229,7 @@ const LandSearch = () => {
           </Card>
         )}
 
-        {/* Step 2 */}
+        {/* Step 2 - Loading */}
         {step === 2 && (
           <Card className="max-w-lg mx-auto">
             <CardContent className="py-12 px-8 text-center">
@@ -284,7 +247,7 @@ const LandSearch = () => {
           </Card>
         )}
 
-        {/* Step 3 */}
+        {/* Step 3 - Results */}
         {step === 3 && result && (
           <div className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -292,12 +255,20 @@ const LandSearch = () => {
               <span className="text-sm font-mono text-muted-foreground bg-muted px-3 py-1 rounded">{result.plotRef}</span>
             </div>
 
+            {/* Cached / Stale indicators */}
+            {result.isCached && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800">
+                <Info className="h-4 w-4" />
+                <span>This result was served from cache.{result.isStale ? " Data may be stale." : ""}</span>
+              </div>
+            )}
+
             <div className="grid md:grid-cols-2 gap-6">
               {/* Card 1 - Title Verification */}
               <Card className="overflow-hidden">
                 <div className="bg-primary px-4 py-3">
                   <h3 className="text-primary-foreground font-display font-bold flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5" /> UgNLIS Title Verification
+                    <ShieldCheck className="h-5 w-5" /> Title Verification
                   </h3>
                 </div>
                 <CardContent className="pt-4 space-y-3 text-sm font-body">
@@ -308,15 +279,14 @@ const LandSearch = () => {
                   <div className="flex justify-between"><span className="text-muted-foreground">Encumbrances</span><span>{result.encumbrances.length ? result.encumbrances.join(", ") : "None detected"}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Ownership Transfers</span><span>{result.ownershipTransfers}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Last Transfer Date</span><span>{result.lastTransferDate}</span></div>
-                  <div className="flex justify-between items-center"><span className="text-muted-foreground">UgNLIS Search Letter</span><span className="text-success text-xs">Official search retrieved ✓</span></div>
                 </CardContent>
               </Card>
 
-              {/* Card 2 - GIS Price Intelligence */}
+              {/* Card 2 - Price Estimate */}
               <Card className="overflow-hidden">
                 <div className="bg-primary-mid px-4 py-3">
                   <h3 className="text-primary-foreground font-display font-bold flex items-center gap-2">
-                    <MapPin className="h-5 w-5" /> GIS Price Intelligence
+                    <DollarSign className="h-5 w-5" /> Price Estimate
                   </h3>
                 </div>
                 <CardContent className="pt-4 space-y-4 text-sm font-body">
@@ -324,49 +294,18 @@ const LandSearch = () => {
                     <p className="text-xs text-muted-foreground mb-1">Estimated Fair Price Range</p>
                     <p className="text-xl font-bold">UGX {result.estimatedPriceLow.toLocaleString()} – {result.estimatedPriceHigh.toLocaleString()}</p>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1"><span>Development Potential</span><span>{result.developmentPotential}/100</span></div>
-                    <Progress value={result.developmentPotential} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1"><span>Road Proximity</span><span>{result.gisFeatures.roadProximity}/100</span></div>
-                    <Progress value={result.gisFeatures.roadProximity} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1"><span>Building Density</span><span>{result.gisFeatures.buildingDensity}/100</span></div>
-                    <Progress value={result.gisFeatures.buildingDensity} className="h-2" />
-                  </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Land Cover</span>
-                    <span className="bg-accent px-2 py-0.5 rounded text-xs font-medium">{result.gisFeatures.landCover}</span>
+                    <span className="text-muted-foreground">Location</span>
+                    <span className="bg-accent px-2 py-0.5 rounded text-xs font-medium">{result.location}</span>
                   </div>
-                  <div className="h-48 rounded overflow-hidden border relative">
-                    <iframe
-                      title={`Map of ${result.location}`}
-                      className="w-full h-full border-0"
-                      src="https://www.openstreetmap.org/export/embed.html?bbox=32.55%2C0.32%2C32.62%2C0.37&layer=mapnik&marker=0.3476%2C32.5825"
-                      loading="lazy"
-                    />
-                    <div className="absolute bottom-1 left-1 bg-card/90 text-xs px-2 py-0.5 rounded font-body">
-                      {result.location}, Kampala
-                    </div>
-                  </div>
-                  <div style={{ height: 120 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={result.priceTrend}>
-                        <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000000).toFixed(0)}M`} />
-                        <ReTooltip formatter={(v: number) => `UGX ${v.toLocaleString()}`} />
-                        <Line type="monotone" dataKey="price" stroke="hsl(216, 54%, 40%)" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Land Type</span><span>{result.plotDetails.landType}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Plot Size</span><span>{result.plotDetails.plotSize} {result.plotDetails.plotSizeUnit}</span></div>
                 </CardContent>
               </Card>
 
               {/* Card 3 - Fraud Risk */}
               <Card className="overflow-hidden">
-                <div className={`px-4 py-3 ${riskBg(result.riskLevel)}`}>
+                <div className={`px-4 py-3 ${result.riskLevel === "LOW" ? "bg-success" : result.riskLevel === "MEDIUM" ? "bg-warning" : "bg-destructive"}`}>
                   <h3 className="text-primary-foreground font-display font-bold flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" /> Fraud Risk Assessment
                   </h3>
@@ -376,30 +315,17 @@ const LandSearch = () => {
                     <p className="text-xs text-muted-foreground mb-2">Overall Risk Level</p>
                     <RiskBadge level={result.riskLevel} />
                   </div>
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div>
-                      <p className="text-xs text-muted-foreground">ML Anomaly</p>
-                      <p className={`text-lg font-bold ${riskColor(result.riskLevel)}`}>{result.mlAnomalyScore}/100</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Graph Risk</p>
-                      <p className={`text-lg font-bold ${riskColor(result.riskLevel)}`}>{result.graphRiskScore}/100</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Combined</p>
-                      <p className={`text-lg font-bold ${riskColor(result.riskLevel)}`}>{result.combinedRiskScore}/100</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium mb-2">Fraud Flags</p>
-                    <ul className="space-y-1.5">
-                      {result.fraudFlags.map((f, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs">
-                          <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${result.riskLevel === "LOW" ? "bg-success" : result.riskLevel === "MEDIUM" ? "bg-warning" : "bg-destructive"}`} />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="space-y-2 text-sm">
+                    <p className="text-xs font-medium">Risk Factors</p>
+                    {result.ownershipTransfers > 2 && (
+                      <p className="flex items-start gap-2 text-xs"><span className="mt-1 w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />High number of ownership transfers ({result.ownershipTransfers})</p>
+                    )}
+                    {result.encumbrances.length > 0 && (
+                      <p className="flex items-start gap-2 text-xs"><span className="mt-1 w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />Active encumbrances detected</p>
+                    )}
+                    {result.riskLevel === "LOW" && (
+                      <p className="flex items-start gap-2 text-xs"><span className="mt-1 w-1.5 h-1.5 rounded-full bg-success shrink-0" />No fraud indicators detected. Ownership history appears clean.</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -412,16 +338,26 @@ const LandSearch = () => {
                   </h3>
                 </div>
                 <CardContent className="pt-4 space-y-3 text-sm font-body">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Estimated Fair Value</span><span>UGX {Math.round((result.estimatedPriceLow + result.estimatedPriceHigh) / 2).toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Stamp Duty ({result.plotDetails.landType === "Mailo" ? "1.0%" : "1.5%"})</span><span>UGX {result.stampDuty.toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Registration Fee</span><span>UGX 10,000</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Consent Fee</span><span>UGX 10,000</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">UgNLIS Search Fee</span><span>UGX 10,000</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Estimated Legal Fees</span><span>UGX 250,000</span></div>
-                  <div className="border-t pt-3 flex justify-between font-bold text-base">
-                    <span>TOTAL TRANSACTION COST</span>
-                    <span>UGX {result.totalTransactionCost.toLocaleString()}</span>
-                  </div>
+                  {(() => {
+                    const midPrice = Math.round((result.estimatedPriceLow + result.estimatedPriceHigh) / 2);
+                    const stampDutyRate = result.plotDetails.landType === "Mailo" ? 0.01 : 0.015;
+                    const stampDuty = Math.round(midPrice * stampDutyRate);
+                    const totalCost = stampDuty + 10000 + 10000 + 10000 + 250000;
+                    return (
+                      <>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Estimated Fair Value</span><span>UGX {midPrice.toLocaleString()}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Stamp Duty ({result.plotDetails.landType === "Mailo" ? "1.0%" : "1.5%"})</span><span>UGX {stampDuty.toLocaleString()}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Registration Fee</span><span>UGX 10,000</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Consent Fee</span><span>UGX 10,000</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">UgNLIS Search Fee</span><span>UGX 10,000</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Estimated Legal Fees</span><span>UGX 250,000</span></div>
+                        <div className="border-t pt-3 flex justify-between font-bold text-base">
+                          <span>TOTAL TRANSACTION COST</span>
+                          <span>UGX {totalCost.toLocaleString()}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>
@@ -450,35 +386,6 @@ const LandSearch = () => {
             </Button>
           </div>
         )}
-
-        {/* Payment Modal */}
-        <Dialog open={showPayment} onOpenChange={setShowPayment}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="font-display">Pay UGX 10,000 — UgNLIS Search Fee</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input className="pl-9" placeholder="0770 123 456" value={phone} onChange={e => setPhone(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <Label>Network</Label>
-                <Select value={network} onValueChange={setNetwork}>
-                  <SelectTrigger><SelectValue placeholder="Select network" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mtn">MTN Mobile Money</SelectItem>
-                    <SelectItem value="airtel">Airtel Money</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full" onClick={handlePayment}>Confirm Payment</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </main>
     </div>
   );
