@@ -27,8 +27,6 @@ dist-ssr
 .env
 .env.local
 .env.*.local
-!.env.example
-!backend/.env.example
 
 # Python backend
 __pycache__/
@@ -37,3 +35,13 @@ __pycache__/
 backend/venv/
 backend/.venv/
 *.egg-info/
+
+# Docker
+*.dockerignore
+
+# Test/Coverage
+coverage/
+htmlcov/
+
+# CI/CD
+.github/

@@ -19,7 +19,6 @@ backend/.env.local
 .env
 .env.local
 .env.*.local
-!.env.example
 
 # Documentation
 README.md

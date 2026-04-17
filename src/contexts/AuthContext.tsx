@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
+import { registerLocalUser } from "@/lib/api";
 import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
 
 export type UserRole = "land_buyer" | "admin";
@@ -15,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<{ error: string | null }>;
+  register: (name: string, email: string, password: string, role: UserRole) => Promise<{ error: string | null; authenticated: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -71,15 +72,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const register = async (name: string, email: string, password: string, role: UserRole) => {
-    const { error } = await supabase.auth.signUp({
+    if (import.meta.env.DEV) {
+      try {
+        await registerLocalUser({ name, email, password, role });
+        const loginResult = await login(email, password);
+        if (loginResult.error) {
+          return { error: loginResult.error, authenticated: false };
+        }
+        return { error: null, authenticated: true };
+      } catch (localError) {
+        const fallback = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name, role },
+          },
+        });
+        if (fallback.error) return { error: fallback.error.message, authenticated: false };
+        return { error: null, authenticated: !!fallback.data.session };
+      }
+    }
+
+    const { error, data } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name, role },
       },
     });
-    if (error) return { error: error.message };
-    return { error: null };
+    if (error) return { error: error.message, authenticated: false };
+    return { error: null, authenticated: !!data.session };
   };
 
   const logout = async () => {

@@ -6,6 +6,19 @@ import { supabase } from "./supabase";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
+export interface RegisterResponse {
+  user_id: string;
+  email: string;
+  confirmed: boolean;
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const {
     data: { session },
@@ -35,6 +48,35 @@ async function apiFetch<T>(
   }
 
   return res.json();
+}
+
+async function publicApiFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `API error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function registerLocalUser(
+  data: RegisterRequest
+): Promise<RegisterResponse> {
+  return publicApiFetch<RegisterResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 // --- Verification ---

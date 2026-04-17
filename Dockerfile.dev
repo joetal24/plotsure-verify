@@ -1,0 +1,24 @@
+# ============================================
+# PlotSure Frontend Development Dockerfile
+# For GitHub Codespaces - with hot reload
+# ============================================
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Install serve for production
+RUN npm install -g serve
+
+# Expose port
+EXPOSE 5173
+
+# Development command - runs both frontend and backend
+CMD echo "Development server ready. Run 'npm run dev' to start."

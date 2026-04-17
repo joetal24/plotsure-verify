@@ -64,14 +64,22 @@ const Login = () => {
   const handleRegister = async () => {
     if (!validateRegister()) return;
     setSubmitting(true);
-    const { error } = await register(regForm.name, regForm.email, regForm.password, regForm.role as UserRole);
+    const { error, authenticated } = await register(regForm.name, regForm.email, regForm.password, regForm.role as UserRole);
     setSubmitting(false);
     if (error) {
       toast({ title: "Registration failed", description: error, variant: "destructive" });
       return;
     }
-    toast({ title: "Account created!", description: "Welcome to PlotSure. Check your email to confirm." });
-    navigate("/dashboard");
+    if (authenticated) {
+      toast({ title: "Account created!", description: "Welcome to PlotSure." });
+      navigate("/dashboard");
+      return;
+    }
+
+    toast({
+      title: "Account created!",
+      description: "Check your email to confirm your account before logging in.",
+    });
   };
 
   const inputClass = "font-body";

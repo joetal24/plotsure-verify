@@ -1,11 +1,16 @@
 # ============================================
 # PlotSure Docker Compose
 # ============================================
-# Quick Start:
-# 1. Copy .env.example to .env.local (frontend) and backend/.env
+# Supports local development and GitHub Codespaces
+#
+# Quick Start (Local):
+# 1. Create .env.local (frontend) and backend/.env
 # 2. Fill in your Supabase credentials
 # 3. Run: docker-compose up --build
-version: "3.8"
+#
+# GitHub Codespaces:
+# - Environment variables are configured via Codespaces secrets
+# - Ports 5173 (frontend) and 8000 (backend) auto-forward
 
 services:
   # ----------------------------------------
@@ -33,6 +38,9 @@ services:
       start_period: 10s
     networks:
       - plotsure-network
+    profiles:
+      - dev
+      - full
 
   # ----------------------------------------
   # Frontend (React + Vite)
@@ -51,6 +59,7 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+        restart: true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
@@ -60,6 +69,52 @@ services:
       start_period: 5s
     networks:
       - plotsure-network
+    profiles:
+      - dev
+      - full
+
+  # ----------------------------------------
+  # Backend (Development - hot reload)
+  # ----------------------------------------
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: plotsure-backend-dev
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - plotsure-network
+    profiles:
+      - dev-only
+
+  # ----------------------------------------
+  # Frontend (Development - hot reload)
+  # ----------------------------------------
+  frontend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: plotsure-frontend-dev
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env.local
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+    networks:
+      - plotsure-network
+    profiles:
+      - dev-only
 
 # ----------------------------------------
 # Networks

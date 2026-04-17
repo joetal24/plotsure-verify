@@ -27,12 +27,20 @@ A land verification platform focused on Uganda. Enables users to verify land own
 
    ```bash
    # Frontend (root)
-   cp .env.example .env.local
-   # Edit .env.local with your Supabase credentials
+   cat > .env.local << 'EOF'
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   VITE_API_URL=http://localhost:8000
+   EOF
 
    # Backend
-   cp backend/.env.example backend/.env
-   # Edit backend/.env with your Supabase credentials
+   cat > backend/.env << 'EOF'
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   JWT_SECRET=your-jwt-secret
+   FRONTEND_URL=http://localhost:5173
+   EOF
    ```
 
 3. **Set up the database**
@@ -69,8 +77,14 @@ source venv/bin/activate  # Linux/Mac
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy env file
-cp .env.example .env
+# Create env file
+cat > .env << 'EOF'
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-jwt-secret
+FRONTEND_URL=http://localhost:5173
+EOF
 
 # Run the server
 uvicorn app.main:app --reload --port 8000
@@ -82,8 +96,12 @@ uvicorn app.main:app --reload --port 8000
 # Install dependencies
 npm install
 
-# Copy env file
-cp .env.example .env.local
+# Create env file
+cat > .env.local << 'EOF'
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_URL=http://localhost:8000
+EOF
 
 # Run the development server
 npm run dev
@@ -140,7 +158,6 @@ plotsure-verify/
 ├── src/                    # React frontend
 ├── docker-compose.yml
 ├── Dockerfile.frontend
-├── .env.example
 └── README.md
 ```
 

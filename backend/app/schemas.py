@@ -74,6 +74,20 @@ class CertificateVerifyResponse(BaseModel):
     search: Optional[VerifyResponse] = None
 
 
+# --- Auth ---
+class AuthRegisterRequest(BaseModel):
+    name: str = Field(min_length=1)
+    email: str
+    password: str = Field(min_length=6)
+    role: str = Field(default="land_buyer")
+
+
+class AuthRegisterResponse(BaseModel):
+    user_id: str
+    email: str
+    confirmed: bool = True
+
+
 # --- History ---
 class SearchHistoryItem(BaseModel):
     id: str

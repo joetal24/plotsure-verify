@@ -27,8 +27,13 @@ pip install -r requirements.txt
 ### 3. Configure environment
 
 ```bash
-cp .env.example .env
-# Edit .env with your Supabase credentials
+cat > .env << 'EOF'
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-jwt-secret
+FRONTEND_URL=http://localhost:5173
+EOF
 ```
 
 ### 4. Run the server
@@ -41,11 +46,11 @@ uvicorn app.main:app --reload --port 8000
 
 In the project root:
 ```bash
-cp .env.example .env.local
-# Edit .env.local with:
-# VITE_SUPABASE_URL=https://your-project.supabase.co
-# VITE_SUPABASE_ANON_KEY=your-anon-key
-# VITE_API_URL=http://localhost:8000
+cat > .env.local << 'EOF'
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_URL=http://localhost:8000
+EOF
 ```
 
 ## API Endpoints
