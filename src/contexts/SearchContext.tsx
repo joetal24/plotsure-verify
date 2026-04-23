@@ -47,6 +47,86 @@ export interface SearchResult {
   isStale?: boolean;
 }
 
+function buildDevDummySearches(): SearchResult[] {
+  const today = new Date();
+  const fmt = (offsetDays: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - offsetDays);
+    return d.toLocaleDateString("en-GB");
+  };
+
+  return [
+    {
+      id: "demo-search-1",
+      plotRef: "VOL 312 FOL 4",
+      location: "Kampala Central",
+      plotDetails: {
+        searchMethod: "title",
+        volume: "312",
+        folio: "4",
+        landType: "Freehold",
+        plotSize: 30,
+        plotSizeUnit: "Decimals",
+      },
+      registeredOwner: "Nakato Joyce Namukasa",
+      titleStatus: "CLEAN",
+      encumbrances: [],
+      ownershipTransfers: 1,
+      lastTransferDate: "2024-06-11",
+      estimatedPriceLow: 380000000,
+      estimatedPriceHigh: 445000000,
+      riskLevel: "LOW",
+      dateSearched: fmt(1),
+    },
+    {
+      id: "demo-search-2",
+      plotRef: "Wakiso/12/97",
+      location: "Wakiso",
+      plotDetails: {
+        searchMethod: "parcel",
+        county: "Busiro",
+        district: "Wakiso",
+        blockNumber: "12",
+        plotNumber: "97",
+        landType: "Mailo",
+        plotSize: 50,
+        plotSizeUnit: "Decimals",
+      },
+      registeredOwner: "Okello David Mukasa",
+      titleStatus: "ENCUMBERED",
+      encumbrances: ["Existing mortgage with Centenary Bank"],
+      ownershipTransfers: 4,
+      lastTransferDate: "2025-01-08",
+      estimatedPriceLow: 465000000,
+      estimatedPriceHigh: 575000000,
+      riskLevel: "HIGH",
+      dateSearched: fmt(4),
+    },
+    {
+      id: "demo-search-3",
+      plotRef: "VOL 128 FOL 19",
+      location: "Mukono",
+      plotDetails: {
+        searchMethod: "title",
+        volume: "128",
+        folio: "19",
+        landType: "Leasehold",
+        plotSize: 1.5,
+        plotSizeUnit: "Acres",
+      },
+      registeredOwner: "Auma Grace Nalubega",
+      titleStatus: "CLEAN",
+      encumbrances: [],
+      ownershipTransfers: 2,
+      lastTransferDate: "2024-02-27",
+      estimatedPriceLow: 83000000,
+      estimatedPriceHigh: 101000000,
+      riskLevel: "MEDIUM",
+      dateSearched: fmt(8),
+    },
+  ];
+}
+
 function apiResponseToResult(
   res: VerifyResponse,
   details: PlotDetails
@@ -149,6 +229,12 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
         riskLevel: item.risk_level,
         dateSearched: new Date(item.created_at).toLocaleDateString("en-GB"),
       }));
+
+      if (import.meta.env.DEV && results.length === 0) {
+        setSearches(buildDevDummySearches());
+        return;
+      }
+
       setSearches(results);
     } catch (err: any) {
       setError(err.message || "Failed to load history");

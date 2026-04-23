@@ -1,27 +1,20 @@
 """
 Verification service — deterministic risk scoring & price estimation.
 Follows ANTIGRAVITY.md rules: NO ML, NO Neo4j, NO GIS pipelines.
+Uses 2025-2026 pricing data from market research.
 """
 import random
 from datetime import datetime, timedelta
 from typing import Optional
 from app.schemas import RiskLevel
+from app.services.pricing_data import (
+    get_district_pricing,
+    calculate_price as calc_price,
+    UGANDA_DISTRICT_PRICING,
+)
 
 
-# --- District base prices (UGX per decimal) ---
-DISTRICT_PRICES = {
-    "Kampala": 15_000_000,
-    "Wakiso": 10_000_000,
-    "Mukono": 7_000_000,
-    "Jinja": 5_000_000,
-    "Entebbe": 12_000_000,
-    "Mbarara": 4_000_000,
-    "Gulu": 2_500_000,
-    "Lira": 2_000_000,
-    "default": 3_000_000,
-}
-
-# --- Land type multipliers ---
+# --- Land type multipliers (for title type) ---
 LAND_TYPE_MULTIPLIERS = {
     "Freehold": 1.0,
     "Leasehold": 0.85,
@@ -42,21 +35,30 @@ def estimate_price(
     district: str,
     land_type: str,
     plot_size: float,
-    plot_size_unit: str,
-) -> tuple[float, float]:
+    plot_size_unit: str = "Decimals",
+    property_type: str = "residential",
+) -> tuple[float, float, dict]:
     """
-    Heuristic price estimation per ANTIGRAVITY.md:
-    base_price (by district) × land_type_multiplier × simple_adjustments
+    Enhanced price estimation using 2025-2026 district pricing data.
+    Returns (min_price, max_price, price_details)
     """
-    base = DISTRICT_PRICES.get(district, DISTRICT_PRICES["default"])
-    multiplier = LAND_TYPE_MULTIPLIERS.get(land_type, 1.0)
     size_in_decimals = normalize_size_to_decimals(plot_size, plot_size_unit)
 
-    total = base * multiplier * size_in_decimals
-    variance = 0.15
-    price_min = round(total * (1 - variance))
-    price_max = round(total * (1 + variance))
-    return price_min, price_max
+    min_price, max_price = calc_price(district, property_type, size_in_decimals)
+
+    pricing_data = get_district_pricing(district)
+
+    price_details = {
+        "district": district,
+        "base_price_per_sqm": pricing_data["per_sqm"],
+        "annual_growth": pricing_data["growth_2025"],
+        "category": pricing_data["category"],
+        "property_type": property_type,
+        "plot_size_decimals": size_in_decimals,
+        "land_type": land_type,
+    }
+
+    return min_price, max_price, price_details
 
 
 def compute_risk(
