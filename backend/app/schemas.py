@@ -56,6 +56,31 @@ class VerifyResponse(BaseModel):
     created_at: str
     is_cached: bool = False
     is_stale: bool = False
+    fraud_score: float = 0.0
+    fraud_risk_level: RiskLevel = RiskLevel.LOW
+    anomaly_flags: list[str] = Field(default_factory=list)
+
+
+class FraudScoreRequest(BaseModel):
+    plot_size: float
+    asking_price: float
+    district: str
+    land_type: str
+    verification_count: int
+    days_since_last_transfer: int
+
+
+class FraudScoreResponse(BaseModel):
+    fraud_score: float
+    risk_level: RiskLevel
+    anomaly_flags: list[str]
+
+
+class GeocodeResponse(BaseModel):
+    lat: float
+    lng: float
+    display_name: str
+    polygon_geojson: Optional[dict[str, object]] = None
 
 
 # --- Certificate ---

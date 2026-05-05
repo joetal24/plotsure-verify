@@ -106,7 +106,10 @@ ALTER TABLE public.searches
 ADD COLUMN IF NOT EXISTS base_price_per_sqm NUMERIC,
 ADD COLUMN IF NOT EXISTS annual_growth NUMERIC,
 ADD COLUMN IF NOT EXISTS price_category TEXT,
-ADD COLUMN IF NOT EXISTS property_type TEXT DEFAULT 'residential';
+ADD COLUMN IF NOT EXISTS property_type TEXT DEFAULT 'residential',
+ADD COLUMN IF NOT EXISTS fraud_score NUMERIC,
+ADD COLUMN IF NOT EXISTS fraud_risk_level TEXT,
+ADD COLUMN IF NOT EXISTS anomaly_flags JSONB DEFAULT '[]'::jsonb;
 
 -- ============================================
 -- Enable RLS on price_history

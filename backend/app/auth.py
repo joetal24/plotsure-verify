@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from app.config import settings
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
@@ -14,6 +14,12 @@ async def get_current_user(
     Validate Supabase JWT and extract user identity.
     NEVER trust frontend-provided user_id — always derive from token.
     """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authorization token",
+        )
+
     token = credentials.credentials
     try:
         payload = jwt.decode(

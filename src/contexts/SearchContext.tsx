@@ -42,6 +42,9 @@ export interface SearchResult {
   estimatedPriceLow: number;
   estimatedPriceHigh: number;
   riskLevel: RiskLevel;
+  fraudScore?: number;
+  fraudRiskLevel?: RiskLevel;
+  anomalyFlags?: string[];
   dateSearched: string;
   isCached?: boolean;
   isStale?: boolean;
@@ -144,6 +147,9 @@ function apiResponseToResult(
     estimatedPriceLow: res.price_min,
     estimatedPriceHigh: res.price_max,
     riskLevel: res.risk_level,
+    fraudScore: res.fraud_score,
+    fraudRiskLevel: res.fraud_risk_level,
+    anomalyFlags: res.anomaly_flags,
     dateSearched: new Date(res.created_at).toLocaleDateString("en-GB"),
     isCached: res.is_cached,
     isStale: res.is_stale,

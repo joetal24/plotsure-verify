@@ -38,9 +38,6 @@ services:
       start_period: 10s
     networks:
       - plotsure-network
-    profiles:
-      - dev
-      - full
 
   # ----------------------------------------
   # Frontend (React + Vite)
@@ -49,6 +46,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+          - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+          - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+          - VITE_API_URL=${VITE_API_URL}
     container_name: plotsure-frontend
     ports:
       - "5173:5173"
@@ -59,7 +60,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-        restart: true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
@@ -69,9 +69,6 @@ services:
       start_period: 5s
     networks:
       - plotsure-network
-    profiles:
-      - dev
-      - full
 
   # ----------------------------------------
   # Backend (Development - hot reload)

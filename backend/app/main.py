@@ -10,6 +10,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.routers import verify, certificates, history, auth
+from app.routers import ml, gis
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -36,6 +37,8 @@ app.add_middleware(
 # Mount routers
 app.include_router(auth.router)
 app.include_router(verify.router)
+app.include_router(ml.router)
+app.include_router(gis.router)
 app.include_router(certificates.router)
 app.include_router(history.router)
 

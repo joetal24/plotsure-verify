@@ -6,7 +6,7 @@ A land verification platform focused on Uganda. Enables users to verify land own
 
 - **Frontend**: React + Vite + TypeScript + shadcn/ui + Tailwind CSS
 - **Backend**: FastAPI (Python)
-- **Auth & Database**: Supabase (PostgreSQL + Auth + Storage)
+- **Auth & Database**: Managed PostgreSQL + JWT auth + object storage
 
 ## Quick Start (Docker)
 
@@ -17,13 +17,7 @@ A land verification platform focused on Uganda. Enables users to verify land own
 
 ### Steps
 
-1. **Create a Supabase project**
-
-   - Go to [supabase.com](https://supabase.com) and sign up
-   - Create a new project
-   - Go to **Settings → API** and copy your credentials
-
-2. **Configure environment variables**
+1. **Configure environment variables**
 
    ```bash
    # Frontend (root)
@@ -40,23 +34,22 @@ A land verification platform focused on Uganda. Enables users to verify land own
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    JWT_SECRET=your-jwt-secret
    FRONTEND_URL=http://localhost:5173
+   BACKEND_PUBLIC_URL=http://localhost:8000
    EOF
    ```
 
-3. **Set up the database**
+2. **Set up the database and storage**
 
-   - Go to Supabase Dashboard → **SQL Editor**
-   - Copy and run the contents of `backend/supabase_schema.sql`
-   - Go to **Storage** → **New Bucket**
-   - Create a bucket named `certificates` and set it to **public**
+   - Run the SQL in `backend/supabase_schema.sql` on your PostgreSQL database
+   - Create a public storage bucket named `certificates`
 
-4. **Run the application**
+3. **Run the application**
 
    ```bash
    docker-compose up --build
    ```
 
-5. **Access the application**
+4. **Access the application**
 
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:8000
@@ -70,9 +63,9 @@ A land verification platform focused on Uganda. Enables users to verify land own
 cd backend
 
 # Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate  # Windows
+python3 -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# .venv\Scripts\activate  # Windows
 
 # Install dependencies
 pip install -r requirements.txt
@@ -84,6 +77,7 @@ SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 JWT_SECRET=your-jwt-secret
 FRONTEND_URL=http://localhost:5173
+BACKEND_PUBLIC_URL=http://localhost:8000
 EOF
 
 # Run the server
@@ -137,6 +131,7 @@ SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 JWT_SECRET=your-jwt-secret
 FRONTEND_URL=http://localhost:5173
+BACKEND_PUBLIC_URL=http://localhost:8000
 ```
 
 ## Project Structure

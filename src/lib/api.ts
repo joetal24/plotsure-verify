@@ -23,9 +23,22 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+
   if (!session?.access_token) {
     throw new Error("Not authenticated");
   }
+
+  if (session.expires_at && session.expires_at * 1000 <= Date.now()) {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error || !data.session?.access_token) {
+      throw new Error("Session expired. Please log in again.");
+    }
+    return {
+      Authorization: `Bearer ${data.session.access_token}`,
+      "Content-Type": "application/json",
+    };
+  }
+
   return {
     Authorization: `Bearer ${session.access_token}`,
     "Content-Type": "application/json",
@@ -112,6 +125,24 @@ export interface VerifyResponse {
   created_at: string;
   is_cached?: boolean;
   is_stale?: boolean;
+  fraud_score?: number;
+  fraud_risk_level?: "LOW" | "MEDIUM" | "HIGH";
+  anomaly_flags?: string[];
+}
+
+export interface FraudScoreRequest {
+  plot_size: number;
+  asking_price: number;
+  district: string;
+  land_type: string;
+  verification_count: number;
+  days_since_last_transfer: number;
+}
+
+export interface FraudScoreResponse {
+  fraud_score: number;
+  risk_level: "LOW" | "MEDIUM" | "HIGH";
+  anomaly_flags: string[];
 }
 
 export async function verifyPlot(data: VerifyRequest): Promise<VerifyResponse> {
@@ -119,6 +150,30 @@ export async function verifyPlot(data: VerifyRequest): Promise<VerifyResponse> {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+export async function getFraudScore(
+  data: FraudScoreRequest
+): Promise<FraudScoreResponse> {
+  return apiFetch<FraudScoreResponse>("/api/v1/ml/fraud-score", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export interface GeocodeResponse {
+  lat: number;
+  lng: number;
+  display_name: string;
+  polygon_geojson?: Record<string, unknown> | null;
+}
+
+export async function geocodeLocation(
+  district: string,
+  county?: string
+): Promise<GeocodeResponse> {
+  const params = new URLSearchParams({ district, ...(county ? { county } : {}) });
+  return publicApiFetch<GeocodeResponse>(`/api/v1/gis/geocode?${params.toString()}`);
 }
 
 export async function getVerification(id: string): Promise<VerifyResponse> {

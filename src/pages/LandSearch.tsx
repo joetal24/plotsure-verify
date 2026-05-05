@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle, DollarSign, Info, FileCheck } from "lucide-react";
+import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle, DollarSign, Info, FileCheck, MapPin } from "lucide-react";
+import PlotMap from "@/components/PlotMap";
 
 const documents = [
   "Duplicate Certificate of Title (original)",
@@ -305,7 +306,7 @@ const LandSearch = () => {
 
               {/* Card 3 - Fraud Risk */}
               <Card className="overflow-hidden">
-                <div className={`px-4 py-3 ${result.riskLevel === "LOW" ? "bg-success" : result.riskLevel === "MEDIUM" ? "bg-warning" : "bg-destructive"}`}>
+                  <div className={`px-4 py-3 ${(result.fraudRiskLevel || result.riskLevel) === "LOW" ? "bg-success" : (result.fraudRiskLevel || result.riskLevel) === "MEDIUM" ? "bg-warning" : "bg-destructive"}`}>
                   <h3 className="text-primary-foreground font-display font-bold flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" /> Fraud Risk Assessment
                   </h3>
@@ -313,7 +314,7 @@ const LandSearch = () => {
                 <CardContent className="pt-4 space-y-4 text-sm font-body">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground mb-2">Overall Risk Level</p>
-                    <RiskBadge level={result.riskLevel} />
+                      <RiskBadge level={result.fraudRiskLevel || result.riskLevel} />
                   </div>
                   <div className="space-y-2 text-sm">
                     <p className="text-xs font-medium">Risk Factors</p>
@@ -323,7 +324,17 @@ const LandSearch = () => {
                     {result.encumbrances.length > 0 && (
                       <p className="flex items-start gap-2 text-xs"><span className="mt-1 w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />Active encumbrances detected</p>
                     )}
-                    {result.riskLevel === "LOW" && (
+                    {result.anomalyFlags && result.anomalyFlags.length > 0 && (
+                      <div className="space-y-1">
+                        {result.anomalyFlags.map((flag) => (
+                          <p key={flag} className="flex items-start gap-2 text-xs">
+                            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                            {flag.replace(/_/g, " ")}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {(result.fraudRiskLevel || result.riskLevel) === "LOW" && (
                       <p className="flex items-start gap-2 text-xs"><span className="mt-1 w-1.5 h-1.5 rounded-full bg-success shrink-0" />No fraud indicators detected. Ownership history appears clean.</p>
                     )}
                   </div>
@@ -361,6 +372,23 @@ const LandSearch = () => {
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="overflow-hidden">
+              <div className="bg-primary px-4 py-3">
+                <h3 className="text-primary-foreground font-display font-bold flex items-center gap-2">
+                  <MapPin className="h-5 w-5" /> Plot Location Map
+                </h3>
+              </div>
+              <CardContent className="pt-4">
+                <PlotMap
+                  district={result.plotDetails.district}
+                  county={result.plotDetails.county}
+                  plotNumber={result.plotDetails.plotNumber || result.plotRef}
+                  landType={result.plotDetails.landType}
+                  riskLevel={result.fraudRiskLevel || result.riskLevel}
+                />
+              </CardContent>
+            </Card>
 
             {/* Document Checklist */}
             <Card>

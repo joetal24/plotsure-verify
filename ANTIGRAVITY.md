@@ -2,7 +2,7 @@
 
 ## Project: PlotSure MVP
 
-PlotSure is a land verification platform focused on Uganda. It enables users to verify land ownership, assess fraud risk, estimate price ranges, and generate tamper-evident certificates.
+PlotSure is a land verification platform focused on Uganda. It enables users to verify land ownership, assess fraud risk, estimate price ranges, and generate verification certificates.
 
 This document defines system behavior, architecture assumptions, constraints, and operational logic for the AI agent and backend services.
 
@@ -181,7 +181,7 @@ If verification becomes slow:
 # 🛑 Constraints
 
 - No Neo4j (graph DB) in MVP
-- No blockchain anchoring in MVP
+- No external ledger anchoring in MVP
 - No ML models in MVP
 - No heavy GIS pipelines
 
@@ -246,7 +246,7 @@ When assisting with this system:
 ## Phase 3
 - ML anomaly detection
 - graph-based fraud detection
-- blockchain certificate anchoring
+- certificate is generated as a signed PDF
 
 ---
 

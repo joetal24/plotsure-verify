@@ -6,7 +6,7 @@ import RiskBadge from "@/components/RiskBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Copy, ShieldCheck, Loader2, ExternalLink } from "lucide-react";
+import { Download, Copy, ShieldCheck, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createCertificate, type CertificateResponse } from "@/lib/api";
 
@@ -34,7 +34,7 @@ const Certificate = () => {
       const cert = await createCertificate(id);
       setCertificate(cert);
       setGenerated(true);
-      toast({ title: "Certificate generated!", description: "Your tamper-evident certificate is ready." });
+      toast({ title: "Certificate generated!", description: "Your verification certificate is ready." });
     } catch (err: any) {
       toast({ title: "Generation failed", description: err.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -117,16 +117,16 @@ const Certificate = () => {
                     </div>
                   </div>
 
-                  {/* Tamper Evidence Section */}
+                  {/* Verification Record */}
                   <div className="border-t pt-5 mt-5">
-                    <h3 className="font-display font-bold text-sm mb-4">Tamper Evidence Record</h3>
+                    <h3 className="font-display font-bold text-sm mb-4">Verification Record</h3>
                     <div className="space-y-3 text-sm font-body">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">SHA-256 Hash</p>
                         <p className="font-mono text-xs break-all bg-muted/50 p-2 rounded">{certificate.hash}</p>
                       </div>
                       <p className="text-xs italic text-muted-foreground leading-relaxed">
-                        This certificate's authenticity can be independently verified by comparing the SHA-256 hash above against the record stored in the PlotSure database. Any modification to this document will produce a different hash.
+                        This certificate can be verified by comparing the SHA-256 hash above against the record stored in the PlotSure database.
                       </p>
                     </div>
                   </div>

@@ -9,6 +9,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import get_current_user
+from app.config import settings
 from app.database import get_supabase
 from app.schemas import CertificateResponse, CertificateVerifyResponse, VerifyResponse
 from app.services.certificate import generate_certificate_hash, generate_certificate_pdf
@@ -77,7 +78,7 @@ async def create_certificate(
     pdf_bytes = generate_certificate_pdf(
         certificate_id=cert_id,
         search_data=search.data,
-        cert_hash=cert_hash,
+        verification_url=settings.BACKEND_PUBLIC_URL,
     )
 
     # 6. Upload PDF to Supabase Storage

@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS public.searches (
     land_type TEXT,
     plot_size NUMERIC,
     plot_size_unit TEXT DEFAULT 'Decimals',
+    fraud_score NUMERIC,
+    fraud_risk_level TEXT CHECK (fraud_risk_level IN ('LOW', 'MEDIUM', 'HIGH')),
+    anomaly_flags JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

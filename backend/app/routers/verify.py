@@ -18,6 +18,7 @@ from app.services.verification import (
     estimate_price,
     build_plot_reference,
 )
+from app.services.fraud_detection import score_fraud
 from app.config import settings
 
 router = APIRouter(prefix="/verify", tags=["Verification"])
@@ -64,6 +65,9 @@ async def verify_plot(
 
     if cached.data:
         row = cached.data[0]
+        fraud_score = row.get("fraud_score", 0.0)
+        fraud_risk_level = row.get("fraud_risk_level", "LOW")
+        anomaly_flags = row.get("anomaly_flags") or []
         return VerifyResponse(
             id=row["id"],
             plot_reference=row["plot_reference"],
@@ -81,6 +85,9 @@ async def verify_plot(
             plot_size_unit=body.plot_size_unit,
             created_at=row["created_at"],
             is_cached=True,
+            fraud_score=fraud_score,
+            fraud_risk_level=fraud_risk_level,
+            anomaly_flags=anomaly_flags,
         )
 
     # 4. Fetch data (UgNLIS or fallback)
@@ -101,6 +108,23 @@ async def verify_plot(
         plot_size_unit=body.plot_size_unit,
     )
 
+    days_since_last_transfer = 365
+    if land_data.get("last_transfer_date"):
+        try:
+            last_transfer = datetime.fromisoformat(land_data["last_transfer_date"])
+            days_since_last_transfer = max((datetime.utcnow() - last_transfer).days, 0)
+        except ValueError:
+            days_since_last_transfer = 365
+
+    fraud = score_fraud(
+        plot_size=body.plot_size,
+        asking_price=body.asking_price or (price_min + price_max) / 2,
+        district=district,
+        land_type=body.land_type.value,
+        verification_count=land_data["transfer_count"],
+        days_since_last_transfer=days_since_last_transfer,
+    )
+
     # 6. Store in DB
     search_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
@@ -118,6 +142,9 @@ async def verify_plot(
         "price_min": price_min,
         "price_max": price_max,
         "created_at": now,
+        "fraud_score": fraud.fraud_score,
+        "fraud_risk_level": fraud.risk_level,
+        "anomaly_flags": fraud.anomaly_flags,
     }
 
     db.table("searches").insert(search_record).execute()
@@ -139,6 +166,9 @@ async def verify_plot(
         plot_size=body.plot_size,
         plot_size_unit=body.plot_size_unit,
         created_at=now,
+        fraud_score=fraud.fraud_score,
+        fraud_risk_level=fraud.risk_level,
+        anomaly_flags=fraud.anomaly_flags,
     )
 
 
@@ -163,6 +193,9 @@ async def get_verification(
         raise HTTPException(status_code=404, detail="Search not found")
 
     row = result.data
+    fraud_score = row.get("fraud_score", 0.0)
+    fraud_risk_level = row.get("fraud_risk_level", "LOW")
+    anomaly_flags = row.get("anomaly_flags") or []
     return VerifyResponse(
         id=row["id"],
         plot_reference=row["plot_reference"],
@@ -179,4 +212,7 @@ async def get_verification(
         plot_size=row.get("plot_size", 0),
         plot_size_unit=row.get("plot_size_unit", "Decimals"),
         created_at=row["created_at"],
+        fraud_score=fraud_score,
+        fraud_risk_level=fraud_risk_level,
+        anomaly_flags=anomaly_flags,
     )

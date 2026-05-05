@@ -8,5 +8,6 @@ httpx==0.28.1
 reportlab==4.2.5
 python-multipart==0.0.19
 slowapi==0.1.9
-qrcode==1.5.3
 Pillow>=9.0.0
+scikit-learn==1.5.2
+numpy==2.0.2

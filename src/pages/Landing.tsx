@@ -58,8 +58,8 @@ const Landing = () => {
               },
               {
                 icon: <Link2 className="h-8 w-8 text-success" />,
-                title: "Blockchain Certificate",
-                desc: "SHA-256 hashed certificates recorded on Polygon testnet — tamper-evident and independently verifiable.",
+                title: "Encrypted Certificate",
+                desc: "Download a signed PDF certificate with verification ID, plot details, risk score, and timestamp.",
               },
             ].map((f, i) => (
               <Card key={i} className="border shadow-sm hover:shadow-md transition-shadow">
@@ -81,9 +81,8 @@ const Landing = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
             {[
               { step: 1, title: "Enter Plot Details", desc: "Enter plot title number or parcel details" },
-              { step: 2, title: "Pay Verification Fee", desc: "Pay UGX 10,000 UgNLIS verification fee via Mobile Money" },
-              { step: 3, title: "Receive AI Analysis", desc: "Receive AI price estimate, GIS spatial analysis, and fraud risk score" },
-              { step: 4, title: "Download Certificate", desc: "Download your blockchain-hashed verification certificate" },
+              { step: 2, title: "Receive AI Analysis", desc: "Receive AI price estimate, GIS spatial analysis, and fraud risk score" },
+              { step: 3, title: "Download Certificate", desc: "Download your signed PDF verification certificate" },
             ].map(s => (
               <div key={s.step} className="text-center">
                 <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold mx-auto mb-4">

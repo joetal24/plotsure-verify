@@ -8,8 +8,8 @@ FastAPI backend for the PlotSure land verification platform.
 
 ```bash
 cd backend
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
+python3 -m venv .venv
+source .venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
@@ -23,6 +23,24 @@ pip install -r requirements.txt
    - `anon` key → `SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
 5. Go to **Settings > API > JWT Settings** and copy the JWT secret → `JWT_SECRET`
+
+### 2b. Use local Supabase instead (optional)
+
+If you prefer running Supabase locally:
+
+```bash
+# From project root
+supabase start
+supabase status
+```
+
+Use `supabase status` output to populate local values in `backend/.env`:
+- `SUPABASE_URL` (usually `http://127.0.0.1:54321`)
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `JWT_SECRET`
+
+Then run `supabase_schema.sql` in local Supabase Studio SQL Editor and create a public `certificates` bucket.
 
 ### 3. Configure environment
 

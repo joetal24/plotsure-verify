@@ -1,24 +1,15 @@
 """
 Certificate generation service.
-Generates SHA-256 hash + Enhanced PDF certificate with QR code, uploads to Supabase Storage.
+Generates SHA-256 hash + PDF certificate, uploads to Supabase Storage.
 """
 import hashlib
 import json
 import io
-import qrcode
 from datetime import datetime
-from base64 import b64encode
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.colors import HexColor
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-    Image,
-)
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
@@ -32,31 +23,12 @@ def generate_certificate_hash(search_data: dict) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def generate_qr_code(data: str) -> bytes:
-    """Generate QR code image for verification URL"""
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(data)
-    qr.make(fit=True)
-    
-    img = qr.make_image(fill_color="black", back_color="white")
-    
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    return buffer.getvalue()
-
-
 def generate_certificate_pdf(
     certificate_id: str,
     search_data: dict,
-    cert_hash: str,
-    verification_url: str = "https://plotsure-verify.supabase.co",
+    verification_url: str = "http://localhost:8000",
 ) -> bytes:
-    """Generate an Enhanced PDF certificate with QR code, price breakdown, and risk explanation."""
+    """Generate a PDF certificate with plot details and risk assessment."""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -97,13 +69,6 @@ def generate_certificate_pdf(
         textColor=HexColor("#1a202c"),
         fontName="Helvetica-Bold",
     )
-    hash_style = ParagraphStyle(
-        "Hash",
-        parent=styles["Normal"],
-        fontSize=7,
-        textColor=HexColor("#2d3748"),
-        fontName="Courier",
-    )
     section_style = ParagraphStyle(
         "Section",
         parent=styles["Heading2"],
@@ -129,32 +94,6 @@ def generate_certificate_pdf(
             "Issued under the PlotSure Land Intelligence Platform", subtitle_style
         )
     )
-    elements.append(Spacer(1, 15))
-
-    # Generate QR Code
-    qr_data = f"{verification_url}/certificates/verify/{cert_hash}"
-    qr_image_bytes = generate_qr_code(qr_data)
-    
-    qr_buffer = io.BytesIO(qr_image_bytes)
-    
-    qr_table_data = [
-        [
-            Paragraph("Scan to Verify:", label_style),
-            Image(qr_buffer, width=2.5*cm, height=2.5*cm),
-            Paragraph(
-                f"Certificate ID: {certificate_id}<br/>"
-                f"Verification Hash: {cert_hash[:16]}...",
-                value_style
-            ),
-        ]
-    ]
-    
-    qr_table = Table(qr_table_data, colWidths=[3*cm, 3*cm, 10*cm])
-    qr_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (1, 0), (1, 0), "CENTER"),
-    ]))
-    elements.append(qr_table)
     elements.append(Spacer(1, 15))
 
     # Certificate info table
@@ -259,19 +198,6 @@ def generate_certificate_pdf(
     )
     elements.append(Spacer(1, 15))
 
-    # Tamper Evidence Section
-    elements.append(Paragraph("TAMPER EVIDENCE", section_style))
-    elements.append(Spacer(1, 6))
-    elements.append(Paragraph(f"SHA-256 Hash: {cert_hash}", hash_style))
-    elements.append(
-        Paragraph(
-            "This certificate's authenticity can be verified by comparing the SHA-256 "
-            "hash above against the record stored in the PlotSure database, or by scanning the QR code. "
-            "Any modification to this document will produce a different hash.",
-            disclaimer_style
-        )
-    )
-    
     # Footer
     elements.append(Spacer(1, 20))
     elements.append(
