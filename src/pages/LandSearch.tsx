@@ -34,72 +34,52 @@ const LandSearch = () => {
 
   const initialStep = parseInt(searchParams.get("step") || "1");
   const [step, setStep] = useState(currentResult && initialStep === 3 ? 3 : 1);
-  const [loadingStep, setLoadingStep] = useState(0);
-  const [checkedDocs, setCheckedDocs] = useState<boolean[]>(new Array(documents.length).fill(false));
-  const [errors, setErrors] = useState<Record<string, string>>({});
+   const [checkedDocs, setCheckedDocs] = useState<boolean[]>(new Array(documents.length).fill(false));
+   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [form, setForm] = useState<Partial<PlotDetails>>({
-    searchMethod: "title",
-    landType: undefined,
-    plotSizeUnit: "Decimals",
-  });
+    const [form, setForm] = useState<Partial<PlotDetails>>({
+      searchMethod: "title",
+      landType: undefined,
+      plotSizeUnit: "Square Metres",
+      district: "Kampala",
+    });
 
-  useEffect(() => {
-    if (!user) navigate("/login");
-  }, [user, navigate]);
+   useEffect(() => {
+     if (!user) navigate("/login");
+   }, [user, navigate]);
 
-  const updateForm = (updates: Partial<PlotDetails>) => setForm(prev => ({ ...prev, ...updates }));
+   const updateForm = (updates: Partial<PlotDetails>) => setForm(prev => ({ ...prev, ...updates }));
 
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (form.searchMethod === "title") {
-      if (!form.volume) e.volume = "Required";
-      if (!form.folio) e.folio = "Required";
-    } else {
-      if (!form.county) e.county = "Required";
-      if (!form.district) e.district = "Required";
-      if (!form.blockNumber) e.blockNumber = "Required";
-      if (!form.plotNumber) e.plotNumber = "Required";
-    }
-    if (!form.landType) e.landType = "Required";
-    if (!form.plotSize || form.plotSize <= 0) e.plotSize = "Enter valid size";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+   const validate = () => {
+     const e: Record<string, string> = {};
+     if (form.searchMethod === "title") {
+       if (!form.volume) e.volume = "Required";
+       if (!form.folio) e.folio = "Required";
+     } else {
+       if (!form.blockNumber) e.blockNumber = "Required";
+       if (!form.plotNumber) e.plotNumber = "Required";
+     }
+     if (!form.landType) e.landType = "Required";
+     if (!form.plotSize || form.plotSize <= 0) e.plotSize = "Enter valid size";
+     setErrors(e);
+     return Object.keys(e).length === 0;
+   };
 
-  const handleVerify = async () => {
-    if (!validate()) return;
-    setStep(2);
-    setLoadingStep(0);
+   const handleVerify = async () => {
+     if (!validate()) return;
+     setStep(2);
 
-    // Show loading steps while API call runs
-    let s = 0;
-    const interval = setInterval(() => {
-      s++;
-      setLoadingStep(s);
-      if (s >= 3) clearInterval(interval);
-    }, 800);
+     try {
+       await addSearch(form as PlotDetails);
+       toast({ title: "Analysis complete", description: "Your PlotSure assessment is ready." });
+       setStep(3);
+     } catch (err: any) {
+       toast({ title: "Verification failed", description: err.message || "Please try again.", variant: "destructive" });
+       setStep(1);
+     }
+   };
 
-    try {
-      await addSearch(form as PlotDetails);
-      clearInterval(interval);
-      setLoadingStep(3);
-      toast({ title: "Analysis complete", description: "Your PlotSure assessment is ready." });
-      setTimeout(() => setStep(3), 500);
-    } catch (err: any) {
-      clearInterval(interval);
-      toast({ title: "Verification failed", description: err.message || "Please try again.", variant: "destructive" });
-      setStep(1);
-    }
-  };
-
-  const result = currentResult;
-
-  const loadingSteps = [
-    "Validating plot reference...",
-    "Fetching ownership data from UgNLIS...",
-    "Computing risk assessment & price estimate...",
-  ];
+   const result = currentResult;
 
   if (!user) return null;
 
@@ -159,16 +139,6 @@ const LandSearch = () => {
               ) : (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>County</Label>
-                    <Input value={form.county || ""} onChange={e => updateForm({ county: e.target.value })} />
-                    {errors.county && <p className="text-xs text-destructive mt-1">{errors.county}</p>}
-                  </div>
-                  <div>
-                    <Label>District</Label>
-                    <Input value={form.district || ""} onChange={e => updateForm({ district: e.target.value })} />
-                    {errors.district && <p className="text-xs text-destructive mt-1">{errors.district}</p>}
-                  </div>
-                  <div>
                     <Label>Block Number</Label>
                     <Input value={form.blockNumber || ""} onChange={e => updateForm({ blockNumber: e.target.value })} />
                     {errors.blockNumber && <p className="text-xs text-destructive mt-1">{errors.blockNumber}</p>}
@@ -177,6 +147,10 @@ const LandSearch = () => {
                     <Label>Plot Number</Label>
                     <Input value={form.plotNumber || ""} onChange={e => updateForm({ plotNumber: e.target.value })} />
                     {errors.plotNumber && <p className="text-xs text-destructive mt-1">{errors.plotNumber}</p>}
+                  </div>
+                  <div className="col-span-2">
+                    <Label>District</Label>
+                    <Input value="Kampala" disabled />
                   </div>
                 </div>
               )}
@@ -198,14 +172,13 @@ const LandSearch = () => {
                   <Label>Plot Size</Label>
                   <div className="flex gap-2">
                     <Input type="number" min={0} value={form.plotSize || ""} onChange={e => updateForm({ plotSize: parseFloat(e.target.value) || 0 })} className="flex-1" />
-                    <Select value={form.plotSizeUnit} onValueChange={v => updateForm({ plotSizeUnit: v as any })}>
-                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Decimals">Decimals</SelectItem>
-                        <SelectItem value="Acres">Acres</SelectItem>
-                        <SelectItem value="Square Metres">Sq. Metres</SelectItem>
-                      </SelectContent>
-                    </Select>
+                     <Select value={form.plotSizeUnit} onValueChange={v => updateForm({ plotSizeUnit: v as any })}>
+                       <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="Acres">Acres</SelectItem>
+                         <SelectItem value="Square Metres">Sq. Metres</SelectItem>
+                       </SelectContent>
+                     </Select>
                   </div>
                   {errors.plotSize && <p className="text-xs text-destructive mt-1">{errors.plotSize}</p>}
                 </div>
@@ -230,23 +203,16 @@ const LandSearch = () => {
           </Card>
         )}
 
-        {/* Step 2 - Loading */}
-        {step === 2 && (
-          <Card className="max-w-lg mx-auto">
-            <CardContent className="py-12 px-8 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary-mid mx-auto mb-6" />
-              <h2 className="text-xl font-display font-bold mb-8">Analysing Plot Data...</h2>
-              <div className="space-y-4 text-left">
-                {loadingSteps.map((label, i) => (
-                  <div key={i} className={`flex items-center gap-3 transition-opacity duration-500 ${loadingStep > i ? "opacity-100" : "opacity-30"}`}>
-                    <CheckCircle2 className={`h-5 w-5 shrink-0 ${loadingStep > i ? "text-success" : "text-muted"}`} />
-                    <span className="text-sm font-body">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+         {/* Step 2 - Loading */}
+         {step === 2 && (
+           <Card className="max-w-lg mx-auto">
+             <CardContent className="py-12 px-8 text-center">
+               <Loader2 className="h-12 w-12 animate-spin text-primary-mid mx-auto mb-6" />
+               <h2 className="text-xl font-display font-bold mb-8">Analysing Plot Data...</h2>
+               <p className="text-sm">Processing your request...</p>
+             </CardContent>
+           </Card>
+         )}
 
         {/* Step 3 - Results */}
         {step === 3 && result && (
@@ -380,13 +346,15 @@ const LandSearch = () => {
                 </h3>
               </div>
               <CardContent className="pt-4">
-                <PlotMap
-                  district={result.plotDetails.district}
-                  county={result.plotDetails.county}
-                  plotNumber={result.plotDetails.plotNumber || result.plotRef}
-                  landType={result.plotDetails.landType}
-                  riskLevel={result.fraudRiskLevel || result.riskLevel}
-                />
+                 <PlotMap
+                   district={result.plotDetails.district}
+                   county={result.plotDetails.county}
+                   plotNumber={result.plotDetails.plotNumber || result.plotRef}
+                   landType={result.plotDetails.landType}
+                   riskLevel={result.fraudRiskLevel || result.riskLevel}
+                   plotSize={result.plotDetails.plotSize}
+                   plotSizeUnit={result.plotDetails.plotSizeUnit}
+                 />
               </CardContent>
             </Card>
 

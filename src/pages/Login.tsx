@@ -13,6 +13,7 @@ import { Loader2 } from "lucide-react";
 
 const roles: { value: UserRole; label: string }[] = [
   { value: "land_buyer", label: "Land Buyer" },
+  { value: "land_seller", label: "Land Seller" },
   { value: "admin", label: "Admin" },
 ];
 

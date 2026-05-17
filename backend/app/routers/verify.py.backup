@@ -55,16 +55,16 @@ async def verify_plot(
     ).isoformat()
 
     cached = (
-        db.table("searches")
-        .select("*")
-        .eq("plot_reference", plot_ref)
-        .gte("created_at", cache_cutoff)
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
+         db.table("searches")
+         .select("*")
+         .eq("plot_reference", plot_ref)
+         .gte("created_at", cache_cutoff)
+         .order("created_at", desc=True)
+         .limit(1)
+         .execute()
+     )
 
-    if cached.data:
+     if cached.data:
          row = cached.data[0]
          fraud_score = row.get("fraud_score", 0.0)
          fraud_risk_level = row.get("fraud_risk_level", "LOW")
@@ -89,44 +89,44 @@ async def verify_plot(
              fraud_score=fraud_score,
              fraud_risk_level=fraud_risk_level,
              anomaly_flags=anomaly_flags,
-)
+         )
+ 
+     # 4. Fetch data (UgNLIS or fallback)
+     land_data = fetch_land_data(plot_ref)
+     district = body.district or land_data["location"]
 
-    # 4. Fetch data (UgNLIS or fallback)
-    land_data = fetch_land_data(plot_ref)
-    district = body.district or land_data["location"]
+     # 5. Compute risk and price in parallel
+     import asyncio
+     risk_task = asyncio.to_thread(
+         compute_risk,
+         transfer_count=land_data["transfer_count"],
+         encumbrances=land_data["encumbrances"],
+         owner_data_missing=not land_data["data_complete"],
+         last_transfer_date=land_data["last_transfer_date"],
+     )
+     price_task = asyncio.to_thread(
+         estimate_price,
+         district=district,
+         land_type=body.land_type.value,
+         plot_size=body.plot_size,
+         plot_size_unit=body.plot_size_unit,
+     )
+     risk_level, (price_min, price_max, _) = await asyncio.gather(risk_task, price_task)
 
-    # 5. Compute risk and price in parallel
-    import asyncio
-    risk_task = asyncio.to_thread(
-        compute_risk,
-        transfer_count=land_data["transfer_count"],
-        encumbrances=land_data["encumbrances"],
-        owner_data_missing=not land_data["data_complete"],
-        last_transfer_date=land_data["last_transfer_date"],
-    )
-    price_task = asyncio.to_thread(
-        estimate_price,
-        district=district,
-        land_type=body.land_type.value,
-        plot_size=body.plot_size,
-        plot_size_unit=body.plot_size_unit,
-    )
-    risk_level, (price_min, price_max, _) = await asyncio.gather(risk_task, price_task)
+     days_since_last_transfer = 365
+     if land_data.get("last_transfer_date"):
+         try:
+             last_transfer = datetime.fromisoformat(land_data["last_transfer_date"])
+             days_since_last_transfer = max((datetime.utcnow() - last_transfer).days, 0)
+         except ValueError:
+             days_since_last_transfer = 365
 
-    days_since_last_transfer = 365
-    if land_data.get("last_transfer_date"):
-        try:
-            last_transfer = datetime.fromisoformat(land_data["last_transfer_date"])
-            days_since_last_transfer = max((datetime.utcnow() - last_transfer).days, 0)
-        except ValueError:
-            days_since_last_transfer = 365
-
-    fraud = score_fraud(
-        plot_size=body.plot_size,
-        asking_price=body.asking_price or (price_min + price_max) / 2,
-        district=district,
-        land_type=body.land_type.value,
-        verification_count=land_data["transfer_count"],
+     fraud = score_fraud(
+         plot_size=body.plot_size,
+         asking_price=body.asking_price or (price_min + price_max) / 2,
+         district=district,
+         land_type=body.land_type.value,
+         verification_count=land_data["transfer_count"],
          days_since_last_transfer=days_since_last_transfer,
      )
 

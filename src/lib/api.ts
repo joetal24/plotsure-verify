@@ -11,6 +11,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   role: string;
+  roles?: string[];
 }
 
 export interface RegisterResponse {
@@ -234,4 +235,97 @@ export async function verifyCertificateByHash(
     throw new Error("Certificate verification failed");
   }
   return res.json();
+}
+
+// --- Land Listings ---
+export interface ListingResponse {
+  id: string;
+  user_id: string;
+  search_id?: string;
+  listing_status: "PENDING" | "ACTIVE" | "SOLD";
+  county?: string;
+  village?: string;
+  specific_area?: string;
+  price_min?: number;
+  price_max?: number;
+  description?: string;
+  contact_preference: string;
+  views_count: number;
+  created_at: string;
+  updated_at: string;
+  plot_reference?: string;
+  location?: string;
+  owner?: string;
+  title_status?: string;
+  land_type?: string;
+  plot_size?: number;
+  plot_size_unit?: string;
+  risk_level?: string;
+  fraud_score?: number;
+}
+
+export interface ListingsResponse {
+  listings: ListingResponse[];
+  total: number;
+  page: number;
+}
+
+export interface ListingCreateRequest {
+  search_id?: string;
+  county: string;
+  village: string;
+  specific_area: string;
+  price_min: number;
+  price_max: number;
+  description?: string;
+  contact_preference: "email" | "phone" | "both";
+  listing_status?: "PENDING" | "ACTIVE";
+}
+
+export interface ListingUpdateRequest {
+  county?: string;
+  village?: string;
+  specific_area?: string;
+  price_min?: number;
+  price_max?: number;
+  description?: string;
+  contact_preference?: "email" | "phone" | "both";
+}
+
+export async function getListings(page = 1): Promise<ListingsResponse> {
+  return apiFetch<ListingsResponse>(`/listings?page=${page}`);
+}
+
+export async function getMyListings(page = 1, status?: string): Promise<ListingsResponse> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (status) params.append("status", status);
+  return apiFetch<ListingsResponse>(`/listings/my?${params.toString()}`);
+}
+
+export async function getListing(id: string): Promise<ListingResponse> {
+  return apiFetch<ListingResponse>(`/listings/${id}`);
+}
+
+export async function createListing(data: ListingCreateRequest): Promise<ListingResponse> {
+  return apiFetch<ListingResponse>("/listings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateListing(id: string, data: ListingUpdateRequest): Promise<ListingResponse> {
+  return apiFetch<ListingResponse>(`/listings/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateListingStatus(
+  id: string,
+  status: "PENDING" | "ACTIVE" | "SOLD"
+): Promise<ListingResponse> {
+  return apiFetch<ListingResponse>(`/listings/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ listing_status: status }),
+  });
 }

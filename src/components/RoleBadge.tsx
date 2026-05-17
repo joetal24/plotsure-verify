@@ -1,14 +1,20 @@
 import type { UserRole } from "@/contexts/AuthContext";
 
+const roleLabels: Record<UserRole, string> = {
+  "land_buyer": "Land Buyer",
+  "land_seller": "Land Seller",
+  "admin": "Admin",
+};
+
 const roleStyles: Record<UserRole, string> = {
-  "Land Buyer": "bg-primary/10 text-primary border-primary/20",
-  "Land Agent": "bg-warning/10 text-warning border-warning/20",
-  "Bank Loan Officer": "bg-success/10 text-success border-success/20",
+  "land_buyer": "bg-primary/10 text-primary border-primary/20",
+  "land_seller": "bg-green-100 text-green-700 border-green-200",
+  "admin": "bg-warning/10 text-warning border-warning/20",
 };
 
 const RoleBadge = ({ role }: { role: UserRole }) => (
-  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${roleStyles[role]}`}>
-    {role}
+  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${roleStyles[role] || roleStyles["land_buyer"]}`}>
+    {roleLabels[role] || role}
   </span>
 );
 

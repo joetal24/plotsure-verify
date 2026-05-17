@@ -28,6 +28,7 @@ async def register_user(body: AuthRegisterRequest):
         "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
         "Content-Type": "application/json",
     }
+    user_roles = body.roles if body.roles else [body.role]
     payload = {
         "email": body.email,
         "password": body.password,
@@ -35,6 +36,7 @@ async def register_user(body: AuthRegisterRequest):
         "user_metadata": {
             "name": body.name,
             "role": body.role,
+            "roles": user_roles,
         },
     }
 

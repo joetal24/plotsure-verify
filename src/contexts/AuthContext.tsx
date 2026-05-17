@@ -3,20 +3,21 @@ import { supabase } from "@/lib/supabase";
 import { registerLocalUser } from "@/lib/api";
 import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
 
-export type UserRole = "land_buyer" | "admin";
+export type UserRole = "land_buyer" | "land_seller" | "admin";
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  roles?: UserRole[];
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<{ error: string | null; authenticated: boolean }>;
+  register: (name: string, email: string, password: string, role: UserRole, roles?: UserRole[]) => Promise<{ error: string | null; authenticated: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -30,11 +31,13 @@ export const useAuth = () => {
 
 function mapUser(supaUser: SupabaseUser): User {
   const meta = supaUser.user_metadata || {};
+  const roles: UserRole[] = meta.roles || (meta.role ? [meta.role] : ["land_buyer"]);
   return {
     id: supaUser.id,
     name: meta.name || meta.full_name || supaUser.email?.split("@")[0] || "",
     email: supaUser.email || "",
-    role: (meta.role as UserRole) || "land_buyer",
+    role: roles[0] || "land_buyer",
+    roles: roles,
   };
 }
 
@@ -71,10 +74,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error: null };
   };
 
-  const register = async (name: string, email: string, password: string, role: UserRole) => {
+  const register = async (name: string, email: string, password: string, role: UserRole, roles?: UserRole[]) => {
+    const userRoles = roles || [role];
     if (import.meta.env.DEV) {
       try {
-        await registerLocalUser({ name, email, password, role });
+        await registerLocalUser({ name, email, password, role, roles: userRoles });
         const loginResult = await login(email, password);
         if (loginResult.error) {
           return { error: loginResult.error, authenticated: false };
@@ -85,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email,
           password,
           options: {
-            data: { name, role },
+            data: { name, role, roles: userRoles },
           },
         });
         if (fallback.error) return { error: fallback.error.message, authenticated: false };

@@ -6,9 +6,10 @@
 -- 1. Users table (extends Supabase auth.users)
 -- Supabase Auth handles user creation automatically.
 -- We add a public profile table for role tracking.
+-- Role is now an array to allow users to be both buyer and seller.
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    role TEXT NOT NULL DEFAULT 'land_buyer' CHECK (role IN ('land_buyer', 'admin')),
+    roles TEXT[] NOT NULL DEFAULT ARRAY['land_buyer'] CHECK (array_length(roles, 1) > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -100,14 +101,24 @@ CREATE POLICY "Users can insert own certificates"
 
 -- ============================================
 -- Auto-create user profile on signup
--- ============================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    role_text TEXT;
+    role_array TEXT[];
 BEGIN
-    INSERT INTO public.users (id, role)
+    role_text := COALESCE(NEW.raw_user_meta_data->>'role', 'land_buyer');
+    -- Convert single role to array, or use as-is if it's an array
+    IF role_text LIKE '{%}' THEN
+        role_array := role_text::TEXT[];
+    ELSE
+        role_array := ARRAY[role_text];
+    END IF;
+
+    INSERT INTO public.users (id, roles)
     VALUES (
         NEW.id,
-        COALESCE(NEW.raw_user_meta_data->>'role', 'land_buyer')
+        role_array
     );
     RETURN NEW;
 END;
@@ -118,3 +129,27 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 5. Land Listings table (for land sellers)
+CREATE TABLE IF NOT EXISTS public.land_listings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    search_id UUID REFERENCES public.searches(id) ON DELETE SET NULL,
+    listing_status TEXT NOT NULL DEFAULT 'PENDING' CHECK (listing_status IN ('PENDING', 'ACTIVE', 'SOLD')),
+    county TEXT,
+    village TEXT,
+    specific_area TEXT,
+    price_min NUMERIC,
+    price_max NUMERIC,
+    description TEXT,
+    contact_preference TEXT DEFAULT 'both' CHECK (contact_preference IN ('email', 'phone', 'both')),
+    views_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Indexes for land_listings
+CREATE INDEX IF NOT EXISTS idx_land_listings_status ON public.land_listings(listing_status);
+CREATE INDEX IF NOT EXISTS idx_land_listings_user ON public.land_listings(user_id);
+CREATE INDEX IF NOT EXISTS idx_land_listings_created ON public.land_listings(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_land_listings_search_id ON public.land_listings(search_id);

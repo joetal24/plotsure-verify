@@ -96,18 +96,21 @@ def compute_risk(
 def fetch_land_data(plot_reference: str) -> dict:
     """
     Fetch land data from UgNLIS (or fallback mock).
-    In MVP, this always returns mock data since UgNLIS integration
-    is not yet available. Structured to be easily swapped later.
+    Simulates realistic land registry data based on plot reference.
     """
-    # TODO: Replace with real UgNLIS API call when available
-    # For now, return deterministic mock data based on plot reference
+    ref_hash = hash(plot_reference)
 
     owners = [
         "Nakato Joyce Namukasa",
         "Okello David Mukasa",
         "Auma Grace Nalubega",
         "Ssemwogerere John Baptist",
+        "Muwonge Ronald Ssempijja",
+        "Nampiima Flavia",
+        "Kaguta William",
+        "Nabukeera Mary",
     ]
+
     locations = [
         "Kampala Central",
         "Nakawa Division",
@@ -116,27 +119,47 @@ def fetch_land_data(plot_reference: str) -> dict:
         "Kawempe",
         "Entebbe",
         "Wakiso",
+        "Mukono",
+        "Luweero",
+        "Jinja",
     ]
 
-    # Use hash of plot_reference for deterministic selection
-    ref_hash = hash(plot_reference)
+    title_types = ["Freehold", "Leasehold", "Mailo"]
+
+    encumbrance_types = [
+        "Existing mortgage with Centenary Bank",
+        "Leasehold transfer pending",
+        "Court injunction on property",
+        "Boundary dispute - Plot 45",
+        "Utility easement - UWEA",
+        "Loan collateral - Stanbic Bank",
+    ]
+
     owner = owners[abs(ref_hash) % len(owners)]
     location = locations[abs(ref_hash) % len(locations)]
-    transfer_count = abs(ref_hash) % 5
-    has_encumbrance = (abs(ref_hash) % 7) == 0
+    transfer_count = abs(ref_hash) % 8
 
-    # Deterministic date within last 2 years
-    days_ago = abs(ref_hash) % 730
-    last_transfer = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%d")
-
+    has_encumbrance = (abs(ref_hash) % 3) == 0
     encumbrances = []
     if has_encumbrance:
-        encumbrances = ["Existing mortgage with Centenary Bank"]
+        encumbrance_count = (abs(ref_hash) % 2) + 1
+        encumbrances = encumbrance_types[
+            (abs(ref_hash) // 10) % len(encumbrance_types)
+            : (abs(ref_hash) // 10) % len(encumbrance_types) + encumbrance_count
+        ]
+        encumbrances = encumbrances[:encumbrance_count]
+
+    days_ago = abs(ref_hash) % 1825
+    last_transfer = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%d")
+
+    title_status = "ENCUMBERED" if encumbrances else "CLEAN"
+    title_type = title_types[abs(ref_hash) % len(title_types)]
 
     return {
         "owner": owner,
         "location": location,
-        "title_status": "ENCUMBERED" if has_encumbrance else "CLEAN",
+        "title_status": title_status,
+        "title_type": title_type,
         "encumbrances": encumbrances,
         "transfer_count": transfer_count,
         "last_transfer_date": last_transfer,

@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import PlotSureLogo from "./PlotSureLogo";
 import RoleBadge from "./RoleBadge";
 import { Button } from "@/components/ui/button";
-import { LogOut, Search, History } from "lucide-react";
+import { LogOut, Search, History, Home, Package, Plus } from "lucide-react";
 
 const AppTopBar = () => {
   const { user, logout } = useAuth();
@@ -14,6 +14,8 @@ const AppTopBar = () => {
     navigate("/");
   };
 
+  const isSeller = user?.role === "land_seller";
+
   return (
     <header className="sticky top-0 z-50 border-b bg-card">
       <div className="container flex h-16 items-center justify-between">
@@ -21,12 +23,28 @@ const AppTopBar = () => {
           <PlotSureLogo />
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => navigate("/history")}>
-            <History className="mr-1.5 h-4 w-4" /> History
-          </Button>
-          <Button size="sm" onClick={() => navigate("/search")}>
-            <Search className="mr-1.5 h-4 w-4" /> New Search
-          </Button>
+          {isSeller ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => navigate("/sell")}>
+                <Package className="mr-1.5 h-4 w-4" /> My Listings
+              </Button>
+              <Button size="sm" onClick={() => navigate("/sell/add")}>
+                <Plus className="mr-1.5 h-4 w-4" /> Add Listing
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => navigate("/land")}>
+                <Home className="mr-1.5 h-4 w-4" /> Browse Land
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate("/history")}>
+                <History className="mr-1.5 h-4 w-4" /> History
+              </Button>
+              <Button size="sm" onClick={() => navigate("/search")}>
+                <Search className="mr-1.5 h-4 w-4" /> New Search
+              </Button>
+            </>
+          )}
           {user && (
             <div className="hidden sm:flex items-center gap-2 ml-2">
               <span className="text-sm font-medium">{user.name}</span>

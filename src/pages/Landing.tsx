@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import PlotSureLogo from "@/components/PlotSureLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, ShieldCheck, FileCheck, ArrowRight, Satellite, Network, Link2 } from "lucide-react";
+import { MapPin, ShieldCheck, FileCheck, ArrowRight, Satellite, Network } from "lucide-react";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ const Landing = () => {
               <MapPin className="mr-2 h-5 w-5" /> Start a Land Search
             </Button>
             <Button size="lg" variant="outline" className="text-base border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}>
-              See How It Works <ArrowRight className="ml-2 h-4 w-4" />
+              How It Works <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -44,7 +44,7 @@ const Landing = () => {
       {/* Feature Cards */}
       <section className="py-16 md:py-24">
         <div className="container">
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
             {[
               {
                 icon: <Satellite className="h-8 w-8 text-primary-mid" />,
@@ -55,11 +55,6 @@ const Landing = () => {
                 icon: <Network className="h-8 w-8 text-warning" />,
                 title: "Graph Fraud Detection",
                 desc: "Neo4j graph-based ownership risk scanner with ML anomaly detection identifies suspicious transaction patterns.",
-              },
-              {
-                icon: <Link2 className="h-8 w-8 text-success" />,
-                title: "Encrypted Certificate",
-                desc: "Download a signed PDF certificate with verification ID, plot details, risk score, and timestamp.",
               },
             ].map((f, i) => (
               <Card key={i} className="border shadow-sm hover:shadow-md transition-shadow">
@@ -78,13 +73,13 @@ const Landing = () => {
       <section id="how-it-works" className="py-16 md:py-24 bg-accent/50">
         <div className="container">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">How It Works</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
+          <div className="grid w-full grid-cols-1 md:grid-cols-3 gap-8 justify-center justify-items-center max-w-5xl mx-auto">
             {[
               { step: 1, title: "Enter Plot Details", desc: "Enter plot title number or parcel details" },
               { step: 2, title: "Receive AI Analysis", desc: "Receive AI price estimate, GIS spatial analysis, and fraud risk score" },
               { step: 3, title: "Download Certificate", desc: "Download your signed PDF verification certificate" },
             ].map(s => (
-              <div key={s.step} className="text-center">
+              <div key={s.step} className="text-center w-full max-w-xs">
                 <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold mx-auto mb-4">
                   {s.step}
                 </div>

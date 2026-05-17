@@ -105,6 +105,7 @@ class AuthRegisterRequest(BaseModel):
     email: str
     password: str = Field(min_length=6)
     role: str = Field(default="land_buyer")
+    roles: Optional[list[str]] = None  # For multiple roles
 
 
 class AuthRegisterResponse(BaseModel):
@@ -122,3 +123,75 @@ class SearchHistoryItem(BaseModel):
     price_min: float
     price_max: float
     created_at: str
+
+
+# --- Listings ---
+class ListingStatus(str, Enum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    SOLD = "SOLD"
+
+
+class ContactPreference(str, Enum):
+    EMAIL = "email"
+    PHONE = "phone"
+    BOTH = "both"
+
+
+class ListingCreate(BaseModel):
+    search_id: Optional[str] = None
+    county: str
+    village: str
+    specific_area: str
+    price_min: float
+    price_max: float
+    description: Optional[str] = None
+    contact_preference: ContactPreference = ContactPreference.BOTH
+    listing_status: ListingStatus = ListingStatus.PENDING
+
+
+class ListingUpdate(BaseModel):
+    county: Optional[str] = None
+    village: Optional[str] = None
+    specific_area: Optional[str] = None
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
+    description: Optional[str] = None
+    contact_preference: Optional[ContactPreference] = None
+
+
+class ListingStatusUpdate(BaseModel):
+    listing_status: ListingStatus
+
+
+class ListingResponse(BaseModel):
+    id: str
+    user_id: str
+    search_id: Optional[str] = None
+    listing_status: ListingStatus
+    county: Optional[str] = None
+    village: Optional[str] = None
+    specific_area: Optional[str] = None
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
+    description: Optional[str] = None
+    contact_preference: str
+    views_count: int
+    created_at: str
+    updated_at: str
+    # Joined data from verification
+    plot_reference: Optional[str] = None
+    location: Optional[str] = None
+    owner: Optional[str] = None
+    title_status: Optional[str] = None
+    land_type: Optional[str] = None
+    plot_size: Optional[float] = None
+    plot_size_unit: Optional[str] = None
+    risk_level: Optional[str] = None
+    fraud_score: Optional[float] = None
+
+
+class ListingsResponse(BaseModel):
+    listings: list[ListingResponse]
+    total: int
+    page: int

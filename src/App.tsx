@@ -12,6 +12,9 @@ import LandSearch from "@/pages/LandSearch";
 import Certificate from "@/pages/Certificate";
 import SearchHistory from "@/pages/SearchHistory";
 import NotFound from "@/pages/NotFound";
+import LandListings from "@/pages/LandListings";
+import SellerDashboard from "@/pages/SellerDashboard";
+import AddListing from "@/pages/AddListing";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +33,10 @@ const App = () => (
               <Route path="/search" element={<LandSearch />} />
               <Route path="/certificate/:id" element={<Certificate />} />
               <Route path="/history" element={<SearchHistory />} />
+              <Route path="/land" element={<LandListings />} />
+              <Route path="/sell" element={<SellerDashboard />} />
+              <Route path="/sell/add" element={<AddListing />} />
+              <Route path="/sell/edit/:id" element={<AddListing />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
