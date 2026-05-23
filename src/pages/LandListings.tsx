@@ -1,29 +1,37 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getListings, type ListingResponse } from "@/lib/api";
+import { getListings, createInquiry, type ListingResponse, type InquiryCreateRequest } from "@/lib/api";
 import AppTopBar from "@/components/AppTopBar";
 import RiskBadge from "@/components/RiskBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, Home, DollarSign, User, FileText, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, MapPin, Home, DollarSign, User, FileText, Eye, Send } from "lucide-react";
 
 const LandListings = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [listings, setListings] = useState<ListingResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
 
   useEffect(() => {
+    document.title = "Listings ◇ PS";
+  }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       navigate("/login");
       return;
     }
     loadListings();
-  }, [user, navigate, page]);
+  }, [user, authLoading, navigate, page]);
 
   const loadListings = async () => {
     try {
@@ -52,6 +60,36 @@ const LandListings = () => {
       default: return "bg-gray-500";
     }
   };
+
+  const openInquiry = (listing: ListingResponse) => {
+    setInquiryListing(listing);
+    setInquiryForm({
+      buyer_name: user?.name || "",
+      buyer_email: user?.email || "",
+      buyer_phone: "",
+      message: "",
+    });
+  };
+
+  const handleSubmitInquiry = async () => {
+    if (!inquiryListing || !inquiryForm.buyer_name || !inquiryForm.buyer_email) {
+      toast({ title: "Error", description: "Name and email are required", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createInquiry(inquiryListing.id, inquiryForm);
+      toast({ title: "Inquiry sent!", description: "The seller will be notified of your interest" });
+      setInquiryListing(null);
+    } catch (err: any) {
+      toast({ title: "Failed to send", description: err.message || "Please try again", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (authLoading) return null;
+  if (!user) return null;
 
   if (loading) {
     return (
@@ -98,10 +136,22 @@ const LandListings = () => {
                     </CardTitle>
                     <CardDescription className="flex items-center mt-1">
                       <MapPin className="h-4 w-4 mr-1" />
-                      {listing.county}{listing.village ? `, ${listing.village}` : ""}
+                      {listing.district || listing.county}{listing.village ? `, ${listing.village}` : ""}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    {listing.latitude && listing.longitude && (
+                      <div className="rounded-md overflow-hidden border mb-2">
+                        <iframe
+                          title="Map"
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${listing.longitude - 0.01},${listing.latitude - 0.01},${listing.longitude + 0.01},${listing.latitude + 0.01}&layer=mapnik&marker=${listing.latitude},${listing.longitude}`}
+                          width="100%"
+                          height="140"
+                          className="border-0"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500 flex items-center">
                         <DollarSign className="h-4 w-4 mr-1" />
@@ -115,7 +165,7 @@ const LandListings = () => {
                         Size
                       </span>
                       <span className="font-medium">
-                        {listing.plot_size} {listing.plot_size_unit || "Decimals"}
+                        {listing.area_acres ? `${listing.area_acres} acres` : `${listing.plot_size || ""} ${listing.plot_size_unit || ""}`}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -135,13 +185,13 @@ const LandListings = () => {
                     {listing.risk_level && (
                       <div className="flex justify-between text-sm items-center">
                         <span className="text-gray-500">Risk Level</span>
-                        <RiskBadge risk={listing.risk_level as "LOW" | "MEDIUM" | "HIGH"} />
+                        <RiskBadge level={listing.risk_level as "LOW" | "MEDIUM" | "HIGH"} />
                       </div>
                     )}
                   </CardContent>
                   <CardFooter className="pt-3 border-t">
-                    <Button className="w-full" variant="outline">
-                      Contact Seller
+                    <Button className="w-full" variant="outline" onClick={() => openInquiry(listing)}>
+                      <Send className="mr-2 h-4 w-4" /> Contact Seller
                     </Button>
                   </CardFooter>
                 </Card>
@@ -157,6 +207,47 @@ const LandListings = () => {
             )}
           </>
         )}
+
+        <Dialog open={!!inquiryListing} onOpenChange={(o) => !o && setInquiryListing(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Contact Seller</DialogTitle>
+              <DialogDescription>
+                {inquiryListing
+                  ? `Send an inquiry about ${inquiryListing.specific_area || inquiryListing.location || "this property"}`
+                  : ""}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Your Name *</Label>
+                <Input value={inquiryForm.buyer_name} onChange={e => setInquiryForm(f => ({ ...f, buyer_name: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Your Email *</Label>
+                <Input type="email" value={inquiryForm.buyer_email} onChange={e => setInquiryForm(f => ({ ...f, buyer_email: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Phone (optional)</Label>
+                <Input value={inquiryForm.buyer_phone || ""} onChange={e => setInquiryForm(f => ({ ...f, buyer_phone: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Message (optional)</Label>
+                <textarea
+                  className="w-full p-3 border rounded-md min-h-[80px] text-sm"
+                  rows={3}
+                  value={inquiryForm.message || ""}
+                  onChange={e => setInquiryForm(f => ({ ...f, message: e.target.value }))}
+                  placeholder="I'm interested in this property..."
+                />
+              </div>
+              <Button className="w-full" onClick={handleSubmitInquiry} disabled={submitting}>
+                {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Send Inquiry
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

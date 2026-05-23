@@ -11,19 +11,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FileText, Download, Search, Loader2 } from "lucide-react";
 
 const SearchHistory = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { searches, setCurrentResult, fetchHistory, loading } = useSearch();
   const navigate = useNavigate();
   const [riskFilter, setRiskFilter] = useState<string>("All");
 
   useEffect(() => {
-    if (!user) navigate("/login");
-  }, [user, navigate]);
+    if (!authLoading && !user) navigate("/login");
+    else if (!authLoading) document.title = "History ◇ PS";
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) fetchHistory();
   }, [user]);
 
+  if (authLoading) return null;
   if (!user) return null;
 
   const filtered = searches.filter(s => {

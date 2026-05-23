@@ -51,10 +51,14 @@ async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const headers = await getAuthHeaders();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
+    signal: controller.signal,
     headers: { ...headers, ...options.headers },
   });
+  clearTimeout(timeout);
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -87,10 +91,47 @@ async function publicApiFetch<T>(
 export async function registerLocalUser(
   data: RegisterRequest
 ): Promise<RegisterResponse> {
-  return publicApiFetch<RegisterResponse>("/auth/register", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  console.log("[API] registerLocalUser payload:", data);
+  try {
+    const result = await publicApiFetch<RegisterResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    console.log("[API] registerLocalUser response:", result);
+    return result;
+  } catch (err) {
+    console.error("[API] registerLocalUser error:", err);
+    throw err;
+  }
+}
+
+export interface LoginViaBackendRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginViaBackendResponse {
+  access_token: string;
+  refresh_token: string;
+  user_id: string;
+  email: string;
+}
+
+export async function loginViaBackend(
+  data: LoginViaBackendRequest
+): Promise<LoginViaBackendResponse> {
+  console.log("[API] loginViaBackend payload:", { email: data.email });
+  try {
+    const result = await publicApiFetch<LoginViaBackendResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    console.log("[API] loginViaBackend response: tokens received");
+    return result;
+  } catch (err) {
+    console.error("[API] loginViaBackend error:", err);
+    throw err;
+  }
 }
 
 // --- Verification ---
@@ -129,6 +170,7 @@ export interface VerifyResponse {
   fraud_score?: number;
   fraud_risk_level?: "LOW" | "MEDIUM" | "HIGH";
   anomaly_flags?: string[];
+  ml_anomaly_score?: number;
 }
 
 export interface FraudScoreRequest {
@@ -144,6 +186,7 @@ export interface FraudScoreResponse {
   fraud_score: number;
   risk_level: "LOW" | "MEDIUM" | "HIGH";
   anomaly_flags: string[];
+  ml_anomaly_score: number;
 }
 
 export async function verifyPlot(data: VerifyRequest): Promise<VerifyResponse> {
@@ -253,6 +296,11 @@ export interface ListingResponse {
   views_count: number;
   created_at: string;
   updated_at: string;
+  latitude?: number;
+  longitude?: number;
+  district?: string;
+  parish?: string;
+  area_acres?: number;
   plot_reference?: string;
   location?: string;
   owner?: string;
@@ -280,9 +328,15 @@ export interface ListingCreateRequest {
   description?: string;
   contact_preference: "email" | "phone" | "both";
   listing_status?: "PENDING" | "ACTIVE";
+  latitude?: number;
+  longitude?: number;
+  district?: string;
+  parish?: string;
+  area_acres?: number;
 }
 
 export interface ListingUpdateRequest {
+  search_id?: string;
   county?: string;
   village?: string;
   specific_area?: string;
@@ -290,6 +344,12 @@ export interface ListingUpdateRequest {
   price_max?: number;
   description?: string;
   contact_preference?: "email" | "phone" | "both";
+  listing_status?: "PENDING" | "ACTIVE";
+  latitude?: number;
+  longitude?: number;
+  district?: string;
+  parish?: string;
+  area_acres?: number;
 }
 
 export async function getListings(page = 1): Promise<ListingsResponse> {
@@ -328,4 +388,186 @@ export async function updateListingStatus(
     method: "PATCH",
     body: JSON.stringify({ listing_status: status }),
   });
+}
+
+// --- Inquiries ---
+export interface InquiryResponse {
+  id: string;
+  listing_id: string;
+  buyer_name: string;
+  buyer_email: string;
+  buyer_phone?: string;
+  message?: string;
+  created_at: string;
+}
+
+export interface InquiriesResponse {
+  inquiries: InquiryResponse[];
+  total: number;
+}
+
+export interface InquiryCreateRequest {
+  buyer_name: string;
+  buyer_email: string;
+  buyer_phone?: string;
+  message?: string;
+}
+
+export async function createInquiry(
+  listingId: string,
+  data: InquiryCreateRequest
+): Promise<InquiryResponse> {
+  return publicApiFetch<InquiryResponse>(`/listings/${listingId}/inquiries`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getListingInquiries(
+  listingId: string
+): Promise<InquiriesResponse> {
+  return apiFetch<InquiriesResponse>(`/listings/${listingId}/inquiries`);
+}
+
+export async function getMyInquiries(): Promise<InquiriesResponse> {
+  return apiFetch<InquiriesResponse>("/inquiries/my");
+}
+
+// --- Graph / Neo4j ---
+
+export interface OwnershipRecord {
+  person: string;
+  from_date: string;
+  to_date: string | null;
+}
+
+export interface OwnershipResponse {
+  plot_ref: string;
+  ownership: OwnershipRecord[];
+  total: number;
+}
+
+export interface PersonPlot {
+  ref: string;
+  district: string;
+  from_date: string;
+  to_date: string | null;
+}
+
+export interface PersonPlotsResponse {
+  person: string;
+  plots: PersonPlot[];
+  total: number;
+}
+
+export interface GraphElement {
+  data: {
+    id: string;
+    label: string;
+    type: "person" | "plot";
+  };
+}
+
+export interface GraphEdgeElement {
+  data: {
+    id: string;
+    source: string;
+    target: string;
+    label: string;
+  };
+}
+
+export function transformOwnershipToGraph(
+  response: OwnershipResponse
+): { nodes: GraphElement[]; edges: GraphEdgeElement[] } {
+  const nodes: GraphElement[] = [];
+  const edges: GraphEdgeElement[] = [];
+  const seen = new Set<string>();
+
+  // Plot node
+  const plotId = `plot:${response.plot_ref}`;
+  nodes.push({
+    data: { id: plotId, label: response.plot_ref, type: "plot" },
+  });
+  seen.add(plotId);
+
+  // Person nodes + edges
+  for (const record of response.ownership) {
+    const personId = `person:${record.person}`;
+    if (!seen.has(personId)) {
+      nodes.push({
+        data: { id: personId, label: record.person, type: "person" },
+      });
+      seen.add(personId);
+    }
+    const dateLabel = record.to_date
+      ? `${record.from_date} → ${record.to_date}`
+      : `since ${record.from_date}`;
+    edges.push({
+      data: {
+        id: `edge:${personId}-${plotId}-${record.from_date}`,
+        source: personId,
+        target: plotId,
+        label: dateLabel,
+      },
+    });
+  }
+
+  return { nodes, edges };
+}
+
+export function transformPersonToGraph(
+  response: PersonPlotsResponse
+): { nodes: GraphElement[]; edges: GraphEdgeElement[] } {
+  const nodes: GraphElement[] = [];
+  const edges: GraphEdgeElement[] = [];
+  const seenNodes = new Set<string>();
+
+  const personId = `person:${response.person}`;
+  nodes.push({
+    data: { id: personId, label: response.person, type: "person" },
+  });
+  seenNodes.add(personId);
+
+  const seenPlots = new Set<string>();
+  for (const plot of response.plots) {
+    const plotId = `plot:${plot.ref}`;
+    if (!seenPlots.has(plotId)) {
+      nodes.push({
+        data: { id: plotId, label: plot.ref, type: "plot" },
+      });
+      seenPlots.add(plotId);
+    }
+    const dateLabel = plot.to_date
+      ? `${plot.from_date} → ${plot.to_date}`
+      : `since ${plot.from_date}`;
+    edges.push({
+      data: {
+        id: `edge:${personId}-${plotId}-${plot.from_date}`,
+        source: personId,
+        target: plotId,
+        label: dateLabel,
+      },
+    });
+  }
+
+  return { nodes, edges };
+}
+
+export async function fetchOwnershipChain(
+  plotRef: string
+): Promise<{ nodes: GraphElement[]; edges: GraphEdgeElement[] }> {
+  const data = await apiFetch<OwnershipResponse>(
+    `/api/v1/graph/ownership/${encodeURIComponent(plotRef)}`
+  );
+  return transformOwnershipToGraph(data);
+}
+
+export async function fetchPersonPlots(
+  name: string
+): Promise<{ nodes: GraphElement[]; edges: GraphEdgeElement[] }> {
+  const data = await apiFetch<PersonPlotsResponse>(
+    `/api/v1/graph/person/${encodeURIComponent(name)}`
+  );
+  return transformPersonToGraph(data);
 }

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PlotSureLogo from "@/components/PlotSureLogo";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,10 @@ import { MapPin, ShieldCheck, FileCheck, ArrowRight, Satellite, Network } from "
 
 const Landing = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "PS ◇ PlotSure";
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">

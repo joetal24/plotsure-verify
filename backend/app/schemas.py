@@ -59,6 +59,7 @@ class VerifyResponse(BaseModel):
     fraud_score: float = 0.0
     fraud_risk_level: RiskLevel = RiskLevel.LOW
     anomaly_flags: list[str] = Field(default_factory=list)
+    ml_anomaly_score: float = 0.0
 
 
 class FraudScoreRequest(BaseModel):
@@ -74,6 +75,7 @@ class FraudScoreResponse(BaseModel):
     fraud_score: float
     risk_level: RiskLevel
     anomaly_flags: list[str]
+    ml_anomaly_score: float = 0.0
 
 
 class GeocodeResponse(BaseModel):
@@ -148,9 +150,15 @@ class ListingCreate(BaseModel):
     description: Optional[str] = None
     contact_preference: ContactPreference = ContactPreference.BOTH
     listing_status: ListingStatus = ListingStatus.PENDING
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    district: Optional[str] = None
+    parish: Optional[str] = None
+    area_acres: Optional[float] = None
 
 
 class ListingUpdate(BaseModel):
+    search_id: Optional[str] = None
     county: Optional[str] = None
     village: Optional[str] = None
     specific_area: Optional[str] = None
@@ -158,6 +166,12 @@ class ListingUpdate(BaseModel):
     price_max: Optional[float] = None
     description: Optional[str] = None
     contact_preference: Optional[ContactPreference] = None
+    listing_status: Optional[ListingStatus] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    district: Optional[str] = None
+    parish: Optional[str] = None
+    area_acres: Optional[float] = None
 
 
 class ListingStatusUpdate(BaseModel):
@@ -179,6 +193,11 @@ class ListingResponse(BaseModel):
     views_count: int
     created_at: str
     updated_at: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    district: Optional[str] = None
+    parish: Optional[str] = None
+    area_acres: Optional[float] = None
     # Joined data from verification
     plot_reference: Optional[str] = None
     location: Optional[str] = None

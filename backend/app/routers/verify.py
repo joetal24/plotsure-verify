@@ -20,6 +20,7 @@ from app.services.verification import (
     build_plot_reference,
 )
 from app.services.fraud_detection import score_fraud
+from app.services.graph import graph_service
 from app.config import settings
 
 router = APIRouter(prefix="/verify", tags=["Verification"])
@@ -69,6 +70,7 @@ async def verify_plot(
          fraud_score = row.get("fraud_score", 0.0)
          fraud_risk_level = row.get("fraud_risk_level", "LOW")
          anomaly_flags = row.get("anomaly_flags") or []
+         ml_anomaly_score = row.get("ml_anomaly_score", 0.0)
          return VerifyResponse(
              id=row["id"],
              plot_reference=row["plot_reference"],
@@ -89,6 +91,7 @@ async def verify_plot(
              fraud_score=fraud_score,
              fraud_risk_level=fraud_risk_level,
              anomaly_flags=anomaly_flags,
+             ml_anomaly_score=ml_anomaly_score,
 )
 
     # 4. Fetch data (UgNLIS or fallback)
@@ -150,9 +153,21 @@ async def verify_plot(
         "fraud_score": fraud.fraud_score,
         "fraud_risk_level": fraud.risk_level,
         "anomaly_flags": fraud.anomaly_flags,
+        "ml_anomaly_score": fraud.ml_anomaly_score,
     }
 
     db.table("searches").insert(search_record).execute()
+
+    # Sync to Neo4j (fire-and-forget — non-blocking)
+    asyncio.ensure_future(
+        graph_service.sync_verification(
+            plot_ref=plot_ref,
+            owner=land_data["owner"],
+            district=district,
+            land_type=body.land_type.value,
+            created_at=now,
+        )
+    )
 
     # 7. Return response
     return VerifyResponse(
@@ -174,6 +189,7 @@ async def verify_plot(
         fraud_score=fraud.fraud_score,
         fraud_risk_level=fraud.risk_level,
         anomaly_flags=fraud.anomaly_flags,
+        ml_anomaly_score=fraud.ml_anomaly_score,
     )
 
 
@@ -201,6 +217,7 @@ async def get_verification(
     fraud_score = row.get("fraud_score", 0.0)
     fraud_risk_level = row.get("fraud_risk_level", "LOW")
     anomaly_flags = row.get("anomaly_flags") or []
+    ml_anomaly_score = row.get("ml_anomaly_score", 0.0)
     return VerifyResponse(
         id=row["id"],
         plot_reference=row["plot_reference"],
@@ -220,4 +237,5 @@ async def get_verification(
         fraud_score=fraud_score,
         fraud_risk_level=fraud_risk_level,
         anomaly_flags=anomaly_flags,
+        ml_anomaly_score=ml_anomaly_score,
     )

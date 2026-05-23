@@ -153,3 +153,17 @@ CREATE INDEX IF NOT EXISTS idx_land_listings_status ON public.land_listings(list
 CREATE INDEX IF NOT EXISTS idx_land_listings_user ON public.land_listings(user_id);
 CREATE INDEX IF NOT EXISTS idx_land_listings_created ON public.land_listings(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_land_listings_search_id ON public.land_listings(search_id);
+
+-- 6. Inquiries table (buyer → seller communication)
+CREATE TABLE IF NOT EXISTS public.inquiries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID NOT NULL REFERENCES public.land_listings(id) ON DELETE CASCADE,
+    buyer_name TEXT NOT NULL,
+    buyer_email TEXT NOT NULL,
+    buyer_phone TEXT,
+    message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inquiries_listing ON public.inquiries(listing_id);
+CREATE INDEX IF NOT EXISTS idx_inquiries_created ON public.inquiries(created_at DESC);

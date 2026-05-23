@@ -45,6 +45,11 @@ def row_to_listing_response(row: dict) -> ListingResponse:
         views_count=row.get("views_count", 0),
         created_at=row.get("created_at", ""),
         updated_at=row.get("updated_at", ""),
+        latitude=row.get("latitude"),
+        longitude=row.get("longitude"),
+        district=row.get("district"),
+        parish=row.get("parish"),
+        area_acres=row.get("area_acres"),
         plot_reference=row.get("plot_reference"),
         location=row.get("location"),
         owner=row.get("owner"),
@@ -71,7 +76,7 @@ async def get_listings(
 
     result = (
         db.table("land_listings")
-        .select("*, searches!inner(plot_reference, location, owner, title_status, land_type, plot_size, plot_size_unit, risk_level, fraud_score)")
+        .select("*, searches(plot_reference, location, owner, title_status, land_type, plot_size, plot_size_unit, risk_level, fraud_score)")
         .eq("listing_status", "ACTIVE")
         .order("created_at", desc=True)
         .range(offset, offset + limit - 1)
@@ -123,7 +128,7 @@ async def get_my_listings(
 
     query = (
         db.table("land_listings")
-        .select("*, searches!inner(plot_reference, location, owner, title_status, land_type, plot_size, plot_size_unit, risk_level, fraud_score)")
+        .select("*, searches(plot_reference, location, owner, title_status, land_type, plot_size, plot_size_unit, risk_level, fraud_score)")
         .eq("user_id", user_id)
     )
 
@@ -194,6 +199,11 @@ async def create_listing(
         "price_max": body.price_max,
         "description": body.description,
         "contact_preference": body.contact_preference.value,
+        "latitude": body.latitude,
+        "longitude": body.longitude,
+        "district": body.district,
+        "parish": body.parish,
+        "area_acres": body.area_acres,
         "created_at": now,
         "updated_at": now,
     }
@@ -337,7 +347,7 @@ async def get_listing(listing_id: str):
 
     result = (
         db.table("land_listings")
-        .select("*, searches!inner(plot_reference, location, owner, title_status, land_type, plot_size, plot_size_unit, risk_level, fraud_score)")
+        .select("*, searches(plot_reference, location, owner, title_status, land_type, plot_size, plot_size_unit, risk_level, fraud_score)")
         .eq("id", listing_id)
         .single()
         .execute()
@@ -346,7 +356,7 @@ async def get_listing(listing_id: str):
     if not result.data:
         raise HTTPException(status_code=404, detail="Listing not found")
 
-    row = result.data[0]
+    row = result.data
     search = row.pop("searches", None)
     if search:
         row["plot_reference"] = search.get("plot_reference")

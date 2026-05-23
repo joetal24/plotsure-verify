@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.routers import verify, certificates, history, auth
-from app.routers import ml, gis, listings
+from app.routers import ml, gis, listings, inquiries, graph as graph_router
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -28,7 +28,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS — allow frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:5173"],
+    allow_origins=[settings.FRONTEND_URL, "http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,6 +42,8 @@ app.include_router(gis.router)
 app.include_router(certificates.router)
 app.include_router(history.router)
 app.include_router(listings.router)
+app.include_router(inquiries.router)
+app.include_router(graph_router.router)
 
 
 @app.get("/health")

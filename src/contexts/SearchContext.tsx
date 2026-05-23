@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import {
   verifyPlot,
   getVerification,
@@ -45,6 +45,7 @@ export interface SearchResult {
   fraudScore?: number;
   fraudRiskLevel?: RiskLevel;
   anomalyFlags?: string[];
+  mlAnomalyScore?: number;
   dateSearched: string;
   isCached?: boolean;
   isStale?: boolean;
@@ -105,6 +106,7 @@ function apiResponseToResult(
     fraudScore: res.fraud_score,
     fraudRiskLevel: res.fraud_risk_level,
     anomalyFlags: res.anomaly_flags,
+    mlAnomalyScore: res.ml_anomaly_score,
     dateSearched: new Date(res.created_at).toLocaleDateString("en-GB"),
     isCached: res.is_cached,
     isStale: res.is_stale,
@@ -171,7 +173,7 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
 
   const getResultById = (id: string) => searches.find((s) => s.id === id);
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     setLoading(true);
     try {
       const history = await getSearchHistory();
@@ -202,7 +204,7 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return (
     <SearchContext.Provider

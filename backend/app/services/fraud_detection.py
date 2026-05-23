@@ -1,8 +1,10 @@
-"""Deterministic fraud detection using heuristic scoring."""
+"""Fraud detection combining heuristic rules with ML anomaly detection."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List
+
+from app.services.anomaly_detection import ml_anomaly_score
 
 
 @dataclass(frozen=True)
@@ -10,6 +12,7 @@ class FraudScoreResult:
     fraud_score: float
     risk_level: str
     anomaly_flags: List[str]
+    ml_anomaly_score: float = 0.0
 
 
 DISTRICT_CODES = {
@@ -115,6 +118,16 @@ def score_fraud(
         score += 0.1
         flags.append("frequent_verifications")
 
+    # ML anomaly score — independent signal complementing the heuristic rules
+    ml_score = ml_anomaly_score(
+        plot_size=plot_size,
+        asking_price=asking_price,
+        district=district,
+        land_type=land_type,
+        verification_count=verification_count,
+        days_since_last_transfer=days_since_last_transfer,
+    )
+
     # Cap score at 1.0
     score = min(score, 1.0)
 
@@ -130,4 +143,5 @@ def score_fraud(
         fraud_score=score,
         risk_level=risk_level,
         anomaly_flags=flags,
+        ml_anomaly_score=ml_score,
     )

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, type UserRole } from "@/contexts/AuthContext";
 import PlotSureLogo from "@/components/PlotSureLogo";
@@ -21,6 +21,10 @@ const Login = () => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    document.title = "Sign In ◇ PS";
+  }, []);
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [regForm, setRegForm] = useState({ name: "", email: "", password: "", confirmPassword: "", role: "" as string });
@@ -65,7 +69,9 @@ const Login = () => {
   const handleRegister = async () => {
     if (!validateRegister()) return;
     setSubmitting(true);
+    console.log("[Login] handleRegister called with:", { name: regForm.name, email: regForm.email, role: regForm.role });
     const { error, authenticated } = await register(regForm.name, regForm.email, regForm.password, regForm.role as UserRole);
+    console.log("[Login] register result:", { error, authenticated });
     setSubmitting(false);
     if (error) {
       toast({ title: "Registration failed", description: error, variant: "destructive" });

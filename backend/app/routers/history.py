@@ -23,6 +23,7 @@ async def get_search_history(
         .select("id, plot_reference, location, risk_level, price_min, price_max, created_at")
         .eq("user_id", user["id"])
         .order("created_at", desc=True)
+        .limit(10)
         .execute()
     )
 

@@ -25,4 +25,5 @@ async def fraud_score(
         fraud_score=result.fraud_score,
         risk_level=RiskLevel(result.risk_level),
         anomaly_flags=result.anomaly_flags,
+        ml_anomaly_score=result.ml_anomaly_score,
     )

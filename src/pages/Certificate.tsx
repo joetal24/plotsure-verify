@@ -13,7 +13,7 @@ import { createCertificate, type CertificateResponse } from "@/lib/api";
 const Certificate = () => {
   const { id } = useParams();
   const { getResultById } = useSearch();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -22,8 +22,9 @@ const Certificate = () => {
   const [generated, setGenerated] = useState(false);
 
   useEffect(() => {
-    if (!user) navigate("/login");
-  }, [user, navigate]);
+    if (!authLoading && !user) navigate("/login");
+    else if (!authLoading) document.title = "Certificate ◇ PS";
+  }, [user, authLoading, navigate]);
 
   const result = id ? getResultById(id) : undefined;
 
@@ -49,6 +50,8 @@ const Certificate = () => {
     }
   }, [result]);
 
+  if (authLoading) return null;
+  if (!user) return null;
   if (!result) {
     return (
       <div className="min-h-screen bg-background">

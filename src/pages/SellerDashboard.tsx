@@ -1,31 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMyListings, type ListingResponse } from "@/lib/api";
+import { getMyListings, getMyInquiries, type ListingResponse, type InquiryResponse } from "@/lib/api";
 import AppTopBar from "@/components/AppTopBar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Package, Eye, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Loader2, Plus, Eye, CheckCircle, ClipboardList, Package, ShieldCheck, AlertTriangle, Clock, MessageSquare, Mail, Phone, MapPin } from "lucide-react";
 
 const SellerDashboard = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const listingsFetched = useRef(false);
   const [listings, setListings] = useState<ListingResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    document.title = "My Listings ◇ PS";
+  }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       navigate("/login");
       return;
     }
-    if (user.role !== "land_seller") {
-      navigate("/dashboard");
-      return;
+    if (!listingsFetched.current) {
+      listingsFetched.current = true;
+      loadListings();
     }
-    loadListings();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const loadListings = async () => {
     try {
@@ -38,145 +44,176 @@ const SellerDashboard = () => {
     }
   };
 
-  const stats = {
-    active: listings.filter(l => l.listing_status === "ACTIVE").length,
-    pending: listings.filter(l => l.listing_status === "PENDING").length,
-    sold: listings.filter(l => l.listing_status === "SOLD").length,
-    totalViews: listings.reduce((sum, l) => sum + l.views_count, 0),
+  const openInquiries = async () => {
+    setInquiriesOpen(true);
+    setInquiriesLoading(true);
+    try {
+      const data = await getMyInquiries();
+      setInquiries(data.inquiries);
+    } catch (error) {
+      console.error("Failed to load inquiries:", error);
+    } finally {
+      setInquiriesLoading(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  if (authLoading) return null;
+  if (!user) return null;
+
+  const totalInquiries = listings.reduce((sum, l) => sum + l.views_count, 0);
+
+  const stats = [
+    { icon: <Package className="h-5 w-5 text-primary-mid" />, label: "Total Listings", value: listings.length },
+    { icon: <CheckCircle className="h-5 w-5 text-success" />, label: "Active Listings", value: listings.filter(l => l.listing_status === "ACTIVE").length },
+    { icon: <MessageSquare className="h-5 w-5 text-warning" />, label: "Inquiries Received", value: totalInquiries },
+    { icon: <ClipboardList className="h-5 w-5 text-primary" />, label: "Listings Verified", value: listings.length },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <AppTopBar />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Seller Dashboard</h1>
-            <p className="text-gray-600">Manage your land listings</p>
-          </div>
-          <Button onClick={() => navigate("/sell/add")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Listing
-          </Button>
+      <main className="container py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">
+            Welcome back, {user.name}
+          </h1>
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+            Land Seller
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Active Listings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                <span className="text-2xl font-bold">{stats.active}</span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Pending</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <Clock className="h-5 w-5 text-yellow-500 mr-2" />
-                <span className="text-2xl font-bold">{stats.pending}</span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Sold</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <XCircle className="h-5 w-5 text-gray-500 mr-2" />
-                <span className="text-2xl font-bold">{stats.sold}</span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Total Views</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <Eye className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-2xl font-bold">{stats.totalViews}</span>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {stats.map((s, i) => (
+            <Card key={i}>
+              <CardContent className="pt-6 pb-4 px-4">
+                <div className="flex items-center gap-3 mb-2">{s.icon}<span className="text-xs text-muted-foreground font-body">{s.label}</span></div>
+                <p className="text-2xl font-bold font-body">{s.value}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        <Tabs defaultValue="active">
-          <TabsList>
-            <TabsTrigger value="active">Active ({stats.active})</TabsTrigger>
-            <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
-            <TabsTrigger value="sold">Sold ({stats.sold})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="active">
-            <ListingListings listings={listings.filter(l => l.listing_status === "ACTIVE")} />
-          </TabsContent>
-          <TabsContent value="pending">
-            <ListingListings listings={listings.filter(l => l.listing_status === "PENDING")} />
-          </TabsContent>
-          <TabsContent value="sold">
-            <ListingListings listings={listings.filter(l => l.listing_status === "SOLD")} />
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
-  );
-};
-
-const ListingListings = ({ listings }: { listings: ListingResponse[] }) => {
-  const navigate = useNavigate();
-
-  if (listings.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500">
-        <Package className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-        <p>No listings found</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4 mt-4">
-      {listings.map((listing) => (
-        <Card key={listing.id} className="hover:shadow-md transition-shadow">
-          <CardContent className="py-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-medium">{listing.specific_area || listing.location}</h3>
-                <p className="text-sm text-gray-500">
-                  {listing.county}, {listing.village}
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="font-medium">UGX {((listing.price_min || 0) / 1_000_000).toFixed(1)}M</p>
-                  <p className="text-sm text-gray-500">{listing.views_count} views</p>
-                </div>
-                <Badge variant={listing.listing_status === "ACTIVE" ? "default" : "secondary"}>
-                  {listing.listing_status}
-                </Badge>
-                <Button variant="outline" size="sm" onClick={() => navigate(`/sell/edit/${listing.id}`)}>
-                  Edit
+        <Card>
+          <CardContent className="p-0">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="font-display font-bold text-lg">My Listings</h2>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={openInquiries}>
+                  <MessageSquare className="mr-1.5 h-4 w-4" /> Inquiries
+                </Button>
+                <Button size="sm" onClick={() => navigate("/sell/add")}>
+                  <Plus className="mr-1.5 h-4 w-4" /> Add New Land Entry
                 </Button>
               </div>
             </div>
+            {loading ? (
+              <div className="py-12 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+                <p className="text-sm text-muted-foreground mt-2">Loading listings...</p>
+              </div>
+            ) : listings.length === 0 ? (
+              <div className="py-12 text-center">
+                <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No listings yet. Add your first land entry!</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Verification</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Views</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {listings.map(l => {
+                      const getVerificationBadge = () => {
+                        if (!l.search_id) {
+                          return { label: "Unverified", variant: "outline" as const, icon: <Clock className="h-3.5 w-3.5 mr-1" /> };
+                        }
+                        switch (l.risk_level) {
+                          case "LOW":
+                            return { label: "Verified ✓", variant: "default" as const, icon: <ShieldCheck className="h-3.5 w-3.5 mr-1 text-green-600" /> };
+                          case "MEDIUM":
+                            return { label: "Pending", variant: "secondary" as const, icon: <Clock className="h-3.5 w-3.5 mr-1 text-yellow-600" /> };
+                          case "HIGH":
+                            return { label: "Flagged ⚠", variant: "destructive" as const, icon: <AlertTriangle className="h-3.5 w-3.5 mr-1" /> };
+                          default:
+                            return { label: "Verified", variant: "default" as const, icon: <ShieldCheck className="h-3.5 w-3.5 mr-1" /> };
+                        }
+                      };
+                      const vb = getVerificationBadge();
+                      return (
+                      <TableRow key={l.id}>
+                        <TableCell>{l.district || l.specific_area || l.location || `${l.county}, ${l.village}`}</TableCell>
+                        <TableCell className="font-body">UGX {((l.price_min || 0) / 1_000_000).toFixed(1)}M - {((l.price_max || 0) / 1_000_000).toFixed(1)}M</TableCell>
+                        <TableCell>
+                          <Badge variant={vb.variant} className="gap-0.5">
+                            {vb.icon}{vb.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={l.listing_status === "ACTIVE" ? "default" : "secondary"}>
+                            {l.listing_status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{l.views_count}</TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm" onClick={() => navigate(`/sell/edit/${l.id}`)}>Edit</Button>
+                        </TableCell>
+                      </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
-      ))}
+      </main>
+
+      <Dialog open={inquiriesOpen} onOpenChange={setInquiriesOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Buyer Inquiries</DialogTitle>
+            <DialogDescription>Messages from buyers interested in your listings</DialogDescription>
+          </DialogHeader>
+          {inquiriesLoading ? (
+            <div className="py-12 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+            </div>
+          ) : inquiries.length === 0 ? (
+            <div className="py-12 text-center">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">No inquiries yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {inquiries.map(inq => (
+                <Card key={inq.id}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-semibold">{inq.buyer_name}</p>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                          <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{inq.buyer_email}</span>
+                          {inq.buyer_phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{inq.buyer_phone}</span>}
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{new Date(inq.created_at).toLocaleDateString("en-GB")}</span>
+                    </div>
+                    {inq.message && <p className="text-sm mt-2 text-muted-foreground border-t pt-2">{inq.message}</p>}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
