@@ -1,18 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMyListings, getMyInquiries, type ListingResponse, type InquiryResponse } from "@/lib/api";
+import { getMyListings, getMyInquiries, updateListingStatus, type ListingResponse, type InquiryResponse } from "@/lib/api";
 import AppTopBar from "@/components/AppTopBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Plus, Eye, CheckCircle, ClipboardList, Package, ShieldCheck, AlertTriangle, Clock, MessageSquare, Mail, Phone, MapPin } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Plus, Eye, CheckCircle, ClipboardList, Package, ShieldCheck, AlertTriangle, Clock, MessageSquare, Mail, Phone, MapPin, ThumbsUp } from "lucide-react";
 
 const SellerDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const listingsFetched = useRef(false);
   const [listings, setListings] = useState<ListingResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,16 @@ const SellerDashboard = () => {
       console.error("Failed to load listings:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const approveListing = async (listingId: string) => {
+    try {
+      await updateListingStatus(listingId, "ACTIVE");
+      toast({ title: "Listing approved", description: "It will now appear on Browse Land." });
+      setListings(prev => prev.map(l => l.id === listingId ? { ...l, listing_status: "ACTIVE" as const } : l));
+    } catch (err: any) {
+      toast({ title: "Failed to approve", description: err.message, variant: "destructive" });
     }
   };
 
@@ -118,6 +130,10 @@ const SellerDashboard = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
+                <div className="px-4 py-3 bg-muted/30 border-b text-sm text-muted-foreground flex items-center gap-2">
+                  <Info className="h-4 w-4 shrink-0" />
+                  Your listing is under review. It will appear on Browse Land once approved (status: PENDING → ACTIVE).
+                </div>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -162,8 +178,13 @@ const SellerDashboard = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>{l.views_count}</TableCell>
-                        <TableCell>
+                        <TableCell className="flex gap-1">
                           <Button variant="outline" size="sm" onClick={() => navigate(`/sell/edit/${l.id}`)}>Edit</Button>
+                          {l.listing_status === "PENDING" && user.role === "admin" && (
+                            <Button variant="default" size="sm" onClick={() => approveListing(l.id)}>
+                              <ThumbsUp className="h-3.5 w-3.5 mr-1" /> Approve
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                       );

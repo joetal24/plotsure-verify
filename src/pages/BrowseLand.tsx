@@ -27,7 +27,6 @@ const BrowseLand = () => {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const [filterDistrict, setFilterDistrict] = useState("All");
-  const [filterType, setFilterType] = useState("All");
   const [filterMaxPrice, setFilterMaxPrice] = useState("");
 
   useEffect(() => {
@@ -61,32 +60,25 @@ const BrowseLand = () => {
   const filtered = useMemo(() => {
     return listings.filter(l => {
       if (filterDistrict !== "All" && l.district !== filterDistrict) return false;
-      if (filterType !== "All" && l.land_type !== filterType) return false;
       if (filterMaxPrice) {
         const max = parseFloat(filterMaxPrice.replace(/,/g, ""));
         if (!isNaN(max) && (l.price_max ?? 0) > max) return false;
       }
       return true;
     });
-  }, [listings, filterDistrict, filterType, filterMaxPrice]);
+  }, [listings, filterDistrict, filterMaxPrice]);
 
   const districts = useMemo(() => {
     const d = new Set(listings.map(l => l.district).filter(Boolean) as string[]);
     return [...d].sort();
   }, [listings]);
 
-  const types = useMemo(() => {
-    const t = new Set(listings.map(l => l.land_type).filter(Boolean) as string[]);
-    return [...t].sort();
-  }, [listings]);
-
   const clearFilters = () => {
     setFilterDistrict("All");
-    setFilterType("All");
     setFilterMaxPrice("");
   };
 
-  const hasFilters = filterDistrict !== "All" || filterType !== "All" || filterMaxPrice !== "";
+  const hasFilters = filterDistrict !== "All" || filterMaxPrice !== "";
 
   const handleCtaClick = (listing: ListingResponse) => {
     if (!user) {
@@ -131,16 +123,6 @@ const BrowseLand = () => {
               <SelectContent>
                 <SelectItem value="All">All districts</SelectItem>
                 {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Land Type</label>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All types</SelectItem>
-                {types.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -234,7 +216,7 @@ const BrowseLand = () => {
                       {listing.district || listing.county || ""}{listing.parish || listing.village ? ` · ${listing.parish || listing.village}` : ""}
                     </p>
                     <p className="text-sm text-foreground/70">
-                      {listing.land_type || "Land"}{listing.plot_size ? ` · ${listing.plot_size} ${listing.plot_size_unit || ""}` : ""}
+                      {listing.area_acres ? `${listing.area_acres} acres` : ""}
                     </p>
                     <p className="font-bold text-base">
                       UGX {(listing.price_min ?? 0).toLocaleString()} – UGX {(listing.price_max ?? 0).toLocaleString()}
