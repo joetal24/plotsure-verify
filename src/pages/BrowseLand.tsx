@@ -1,14 +1,38 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getListings, type ListingResponse } from "@/lib/api";
+import { getListings, getListingSeller, type ListingResponse, type SellerContact } from "@/lib/api";
 import AppTopBar from "@/components/AppTopBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Home, MapPin, Loader2, Search } from "lucide-react";
+import { Home, MapPin, Loader2, Search, X, Phone, Mail, MessageCircle } from "lucide-react";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+const markerIcon = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+function formatPrice(v: number | undefined | null): string {
+  if (v == null) return "";
+  return "UGX " + v.toLocaleString("en-UG");
+}
+
+function formatDate(iso: string | undefined | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
 
 function parsePlotRef(ref: string): { volume?: string; folio?: string } {
   const m = ref.match(/VOL\s*(\d+).*?FOL\s*(\d+)/i);
@@ -28,6 +52,10 @@ const BrowseLand = () => {
 
   const [filterDistrict, setFilterDistrict] = useState("All");
   const [filterMaxPrice, setFilterMaxPrice] = useState("");
+
+  const [selectedListing, setSelectedListing] = useState<ListingResponse | null>(null);
+  const [sellerContact, setSellerContact] = useState<SellerContact | null>(null);
+  const [sellerContactLoading, setSellerContactLoading] = useState(false);
 
   useEffect(() => {
     document.title = "Browse ◇ PS";
@@ -80,28 +108,49 @@ const BrowseLand = () => {
 
   const hasFilters = filterDistrict !== "All" || filterMaxPrice !== "";
 
-  const handleCtaClick = (listing: ListingResponse) => {
+  const smartNavigate = useCallback((listing: ListingResponse) => {
     if (!user) {
       toast({ title: "Sign in to verify this plot", description: "Create an account or log in to continue." });
       navigate("/login");
       return;
     }
-    if (user.role === "land_seller") {
-      const ref = listing.plot_reference || "";
-      const { volume, folio } = parsePlotRef(ref);
-      const params = new URLSearchParams();
-      if (volume) params.set("volume", volume);
-      if (folio) params.set("folio", folio);
-      navigate(`/search?${params.toString()}`);
-      return;
-    }
     const ref = listing.plot_reference || "";
     const { volume, folio } = parsePlotRef(ref);
     const params = new URLSearchParams();
-    if (volume) params.set("volume", volume);
-    if (folio) params.set("folio", folio);
+    if (listing.search_id && volume && folio) {
+      if (volume) params.set("vol", volume);
+      if (folio) params.set("fol", folio);
+      params.set("listing", listing.id);
+      navigate(`/search?${params.toString()}`);
+      return;
+    }
+    if (listing.district) params.set("district", listing.district);
+    if (listing.id) params.set("listing", listing.id);
     navigate(`/search?${params.toString()}`);
-  };
+  }, [user, navigate, toast]);
+
+  const openPanel = useCallback(async (listing: ListingResponse) => {
+    setSelectedListing(listing);
+    setSellerContact(null);
+    setSellerContactLoading(true);
+    if (user) {
+      try {
+        const contact = await getListingSeller(listing.id);
+        setSellerContact(contact);
+      } catch {
+        // silently fail — panel still shows without contact info
+      } finally {
+        setSellerContactLoading(false);
+      }
+    } else {
+      setSellerContactLoading(false);
+    }
+  }, [user]);
+
+  const closePanel = useCallback(() => {
+    setSelectedListing(null);
+    setSellerContact(null);
+  }, []);
 
   if (authLoading) return null;
 
@@ -219,7 +268,7 @@ const BrowseLand = () => {
                       {listing.area_acres ? `${listing.area_acres} acres` : ""}
                     </p>
                     <p className="font-bold text-base">
-                      UGX {(listing.price_min ?? 0).toLocaleString()} – UGX {(listing.price_max ?? 0).toLocaleString()}
+                      {formatPrice(listing.price_min)} – {formatPrice(listing.price_max)}
                     </p>
                     {listing.description && (
                       <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
@@ -234,14 +283,14 @@ const BrowseLand = () => {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleCtaClick(listing)}
+                      onClick={() => openPanel(listing)}
                     >
                       View Details
                     </Button>
                     <Button
                       size="sm"
                       className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => handleCtaClick(listing)}
+                      onClick={() => smartNavigate(listing)}
                     >
                       <Search className="h-4 w-4 mr-1.5" />
                       {!user ? "Verify & Check Title" : user.role === "land_seller" ? "View Title Details" : "Verify & Check Title"}
@@ -263,6 +312,157 @@ const BrowseLand = () => {
           </>
         )}
       </main>
+
+      {/* Slide-in detail panel */}
+      {selectedListing && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={closePanel} />
+          <div className="relative w-full max-w-lg bg-background h-full overflow-y-auto shadow-2xl animate-in slide-in-from-right duration-300">
+            <div className="sticky top-0 z-10 bg-background border-b px-5 py-4 flex items-center justify-between">
+              <div className="min-w-0 flex-1 pr-3">
+                <p className="font-semibold text-base truncate">
+                  {selectedListing.district || selectedListing.county || "Unknown"}
+                  {selectedListing.village ? ` · ${selectedListing.village}` : ""}
+                </p>
+                <span
+                  className={`inline-block mt-1 text-[11px] font-bold px-2 py-0.5 rounded ${
+                    selectedListing.listing_status === "ACTIVE"
+                      ? "bg-success/10 text-success"
+                      : "bg-warning/10 text-warning"
+                  }`}
+                >
+                  {selectedListing.listing_status}
+                </span>
+              </div>
+              <Button variant="ghost" size="icon" onClick={closePanel}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="p-5 space-y-6">
+              {/* Map */}
+              <div className="h-[200px] rounded-xl overflow-hidden border">
+                {selectedListing.latitude && selectedListing.longitude ? (
+                  <MapContainer
+                    center={[selectedListing.latitude, selectedListing.longitude]}
+                    zoom={16}
+                    scrollWheelZoom={false}
+                    className="h-full w-full"
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker position={[selectedListing.latitude, selectedListing.longitude]} icon={markerIcon} />
+                  </MapContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-muted text-sm text-muted-foreground">
+                    <MapPin className="h-5 w-5 mr-2" />
+                    Location not provided
+                  </div>
+                )}
+              </div>
+
+              {/* Details */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Location Details</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">District</span><span className="font-medium text-right">{selectedListing.district || "—"}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">County</span><span className="font-medium text-right">{selectedListing.county || "—"}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Parish</span><span className="font-medium text-right">{selectedListing.parish || "—"}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Village</span><span className="font-medium text-right">{selectedListing.village || "—"}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Specific Area</span><span className="font-medium text-right">{selectedListing.specific_area || "—"}</span></div>
+                </div>
+                <div className="border-t pt-3 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Land Area</span><span className="font-medium">{selectedListing.area_acres ? `${selectedListing.area_acres} acres` : "—"}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Price Range</span><span className="font-medium">{formatPrice(selectedListing.price_min)} – {formatPrice(selectedListing.price_max)}</span></div>
+                </div>
+                {selectedListing.description && (
+                  <div className="border-t pt-3">
+                    <p className="text-xs text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm leading-relaxed">{selectedListing.description}</p>
+                  </div>
+                )}
+                <div className="border-t pt-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Listed on</span>
+                    <span className="font-medium">{formatDate(selectedListing.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Seller */}
+              <div className="border-t pt-4 space-y-3">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Contact Seller</h3>
+                {sellerContactLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading contact info...
+                  </div>
+                ) : sellerContact && ((sellerContact.contact_preference === "phone" || sellerContact.contact_preference === "both") && sellerContact.contact_phone) || ((sellerContact.contact_preference === "email" || sellerContact.contact_preference === "both") && sellerContact.email) ? (
+                  <div className="space-y-3">
+                    {(sellerContact.contact_preference === "phone" || sellerContact.contact_preference === "both") && sellerContact.contact_phone && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Phone</p>
+                        <p className="text-sm font-medium mb-2">{sellerContact.contact_phone}</p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <a href={`tel:${sellerContact.contact_phone}`} className="flex-1">
+                            <Button variant="secondary" className="w-full">
+                              <Phone className="h-4 w-4 mr-2" />
+                              Call Seller
+                            </Button>
+                          </a>
+                          <a
+                            href={`https://wa.me/256${sellerContact.contact_phone.substring(1)}?text=${encodeURIComponent(`Hi, I saw your plot listed on PlotSure (${selectedListing.district || ""} · ${selectedListing.village || ""}). I am interested and would like more details.`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1"
+                          >
+                            <Button variant="secondary" className="w-full">
+                              <MessageCircle className="h-4 w-4 mr-2" />
+                              WhatsApp
+                            </Button>
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {(sellerContact.contact_preference === "email" || sellerContact.contact_preference === "both") && sellerContact.email && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Email</p>
+                        <p className="text-sm font-medium mb-2">{sellerContact.email}</p>
+                        <a href={`mailto:${sellerContact.email}`} className="block">
+                          <Button variant="secondary" className="w-full">
+                            <Mail className="h-4 w-4 mr-2" />
+                            Email Seller
+                          </Button>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Seller has not provided contact details yet.</p>
+                )}
+              </div>
+
+              {/* CTA */}
+              <div className="border-t pt-4">
+                <Button
+                  className="w-full bg-[#0a1628] hover:bg-[#0a1628]/90 text-white"
+                  size="lg"
+                  onClick={() => {
+                    const listing = selectedListing;
+                    closePanel();
+                    smartNavigate(listing);
+                  }}
+                >
+                  <Search className="h-5 w-5 mr-2" />
+                  Verify & Check Title
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

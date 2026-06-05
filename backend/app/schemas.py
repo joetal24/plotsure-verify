@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from enum import Enum
 from datetime import datetime
+from uuid import UUID
 
 
 # --- Enums ---
@@ -23,6 +24,14 @@ class SearchMethod(str, Enum):
     PARCEL = "parcel"
 
 
+class FraudStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    VERIFIED = "verified"
+    FLAGGED = "flagged"
+    FAILED = "failed"
+
+
 # --- Verification ---
 class VerifyRequest(BaseModel):
     search_method: SearchMethod
@@ -36,6 +45,16 @@ class VerifyRequest(BaseModel):
     plot_size: float = Field(gt=0)
     plot_size_unit: str = "Decimals"
     asking_price: Optional[float] = None
+    owner_name: Optional[str] = None
+    national_id: Optional[str] = None
+
+
+class PreliminaryVerifyResponse(BaseModel):
+    verification_id: str
+    plot_id: str
+    status: str = "preliminary_verified"
+    message: str = "Basic checks passed. Deep fraud analysis in progress."
+    processing_time_ms: float
 
 
 class VerifyResponse(BaseModel):
@@ -60,6 +79,15 @@ class VerifyResponse(BaseModel):
     fraud_risk_level: RiskLevel = RiskLevel.LOW
     anomaly_flags: list[str] = Field(default_factory=list)
     ml_anomaly_score: float = 0.0
+    fraud_status: FraudStatus = FraudStatus.PENDING
+
+
+class VerificationStatusResponse(BaseModel):
+    verification_id: str
+    status: str  # processing, verified, flagged, failed
+    fraud_details: Optional[dict] = None
+    created_at: str
+    updated_at: Optional[str] = None
 
 
 class FraudScoreRequest(BaseModel):
@@ -85,29 +113,13 @@ class GeocodeResponse(BaseModel):
     polygon_geojson: Optional[dict[str, object]] = None
 
 
-# --- Certificate ---
-class CertificateResponse(BaseModel):
-    id: str
-    search_id: str
-    user_id: str
-    hash: str
-    file_url: Optional[str] = None
-    created_at: str
-
-
-class CertificateVerifyResponse(BaseModel):
-    valid: bool
-    certificate: Optional[CertificateResponse] = None
-    search: Optional[VerifyResponse] = None
-
-
 # --- Auth ---
 class AuthRegisterRequest(BaseModel):
     name: str = Field(min_length=1)
     email: str
     password: str = Field(min_length=6)
     role: str = Field(default="land_buyer")
-    roles: Optional[list[str]] = None  # For multiple roles
+    roles: Optional[list[str]] = None
 
 
 class AuthRegisterResponse(BaseModel):
@@ -149,6 +161,7 @@ class ListingCreate(BaseModel):
     price_max: float
     description: Optional[str] = None
     contact_preference: ContactPreference = ContactPreference.BOTH
+    contact_phone: Optional[str] = None
     listing_status: ListingStatus = ListingStatus.PENDING
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -166,6 +179,7 @@ class ListingUpdate(BaseModel):
     price_max: Optional[float] = None
     description: Optional[str] = None
     contact_preference: Optional[ContactPreference] = None
+    contact_phone: Optional[str] = None
     listing_status: Optional[ListingStatus] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -190,6 +204,7 @@ class ListingResponse(BaseModel):
     price_max: Optional[float] = None
     description: Optional[str] = None
     contact_preference: str
+    contact_phone: Optional[str] = None
     views_count: int
     created_at: str
     updated_at: str
@@ -198,7 +213,6 @@ class ListingResponse(BaseModel):
     district: Optional[str] = None
     parish: Optional[str] = None
     area_acres: Optional[float] = None
-    # Joined data from verification
     plot_reference: Optional[str] = None
     location: Optional[str] = None
     owner: Optional[str] = None
@@ -214,3 +228,10 @@ class ListingsResponse(BaseModel):
     listings: list[ListingResponse]
     total: int
     page: int
+
+
+# --- Admin ---
+class AdminRetryResponse(BaseModel):
+    verification_id: str
+    status: str
+    message: str

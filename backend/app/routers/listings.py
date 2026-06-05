@@ -1,18 +1,21 @@
 """
 Land Listings endpoints:
-  GET  /listings       - Get all ACTIVE listings (for buyers)
-  GET  /listings/my    - Get seller's own listings
-  POST /listings       - Create new listing (seller)
-  PUT  /listings/{id}  - Update listing (seller)
-  PATCH /listings/{id}/status - Update listing status (seller)
-  POST /listings/{id}/views - Increment view count
+  GET  /listings                - Get all ACTIVE listings (for buyers)
+  GET  /listings/my             - Get seller's own listings
+  POST /listings                - Create new listing (seller)
+  PUT  /listings/{id}           - Update listing (seller)
+  PATCH /listings/{id}/status   - Update listing status (seller)
+  POST /listings/{id}/views     - Increment view count
+  GET  /listings/{id}/seller    - Get seller contact info for a listing
 """
 import uuid
+import httpx
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 
 from app.auth import get_current_user
+from app.config import settings
 from app.database import get_supabase
 from app.schemas import (
     ListingCreate,
@@ -42,6 +45,7 @@ def row_to_listing_response(row: dict) -> ListingResponse:
         price_max=row.get("price_max"),
         description=row.get("description"),
         contact_preference=row.get("contact_preference", "both"),
+        contact_phone=row.get("contact_phone"),
         views_count=row.get("views_count", 0),
         created_at=row.get("created_at", ""),
         updated_at=row.get("updated_at", ""),
@@ -199,6 +203,7 @@ async def create_listing(
         "price_max": body.price_max,
         "description": body.description,
         "contact_preference": body.contact_preference.value,
+        "contact_phone": body.contact_phone,
         "latitude": body.latitude,
         "longitude": body.longitude,
         "district": body.district,
@@ -336,6 +341,59 @@ async def increment_views(
 
     row = result.data[0]
     return row_to_listing_response(row)
+
+
+@router.get("/{listing_id}/seller")
+async def get_listing_seller(
+    listing_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """GET /listings/{id}/seller — get seller contact info (name, email, phone)."""
+    db = get_supabase()
+
+    listing_result = (
+        db.table("land_listings")
+        .select("user_id, contact_preference, contact_phone")
+        .eq("id", listing_id)
+        .single()
+        .execute()
+    )
+
+    if not listing_result.data:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    seller_id = listing_result.data["user_id"]
+    contact_pref = listing_result.data.get("contact_preference", "both")
+    contact_phone = listing_result.data.get("contact_phone")
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{settings.SUPABASE_URL}/rest/v1/users",
+                params={"id": f"eq.{seller_id}", "select": "id,email,phone"},
+                headers={
+                    "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
+                    "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
+                    "Accept-Profile": "auth",
+                },
+            )
+            if resp.status_code == 200 and resp.json():
+                seller = resp.json()[0]
+                return {
+                    "name": seller.get("email", "").split("@")[0] if seller.get("email") else "Seller",
+                    "email": seller.get("email", ""),
+                    "contact_phone": contact_phone or "",
+                    "contact_preference": contact_pref,
+                }
+    except Exception:
+        pass
+
+    return {
+        "name": "Seller",
+        "email": "",
+        "contact_phone": contact_phone or "",
+        "contact_preference": contact_pref,
+    }
 
 
 @router.get("/{listing_id}", response_model=ListingResponse)

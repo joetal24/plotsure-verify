@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearch, type PlotDetails, type SearchMethod, type LandType } from "@/contexts/SearchContext";
+import { getListingSeller } from "@/lib/api";
 import AppTopBar from "@/components/AppTopBar";
 import RiskBadge from "@/components/RiskBadge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle, DollarSign, Info, FileCheck, MapPin, FileText, Phone, Mail, ExternalLink, Copy } from "lucide-react";
+import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle, DollarSign, Info, FileCheck, MapPin, FileText, Phone, Mail, Copy } from "lucide-react";
 import PlotMap from "@/components/PlotMap";
 
 const UGANDA_DISTRICTS = [
@@ -61,9 +62,36 @@ const LandSearch = () => {
       district: undefined,
     });
 
+  const [notVerifiedBanner, setNotVerifiedBanner] = useState(false);
+  const autoSubmitRef = useRef<{ vol: string; fol: string } | null>(null);
+  const [sellerName, setSellerName] = useState<string | null>(null);
+  const listingId = searchParams.get("listing");
+
    useEffect(() => {
      if (!authLoading && !user) navigate("/login");
    }, [user, authLoading, navigate]);
+
+   useEffect(() => {
+     const vol = searchParams.get("vol");
+     const fol = searchParams.get("fol");
+     const district = searchParams.get("district");
+
+     if (vol && fol) {
+       updateForm({ volume: vol, folio: fol, searchMethod: "title" });
+       autoSubmitRef.current = { vol, fol };
+     } else if (district) {
+       updateForm({ district, searchMethod: "parcel" });
+       setNotVerifiedBanner(true);
+     }
+   }, []);
+
+   useEffect(() => {
+     if (!autoSubmitRef.current || authLoading || !user) return;
+     if (form.volume === autoSubmitRef.current.vol && form.folio === autoSubmitRef.current.folio) {
+       autoSubmitRef.current = null;
+       handleVerify();
+     }
+   }, [form.volume, form.folio, authLoading, user]);
 
    const updateForm = (updates: Partial<PlotDetails>) => setForm(prev => ({ ...prev, ...updates }));
 
@@ -98,6 +126,16 @@ const LandSearch = () => {
 
    const result = currentResult;
 
+  useEffect(() => {
+    if (result && !result.registeredOwner && listingId) {
+      getListingSeller(listingId)
+        .then(contact => setSellerName(contact.name))
+        .catch(() => setSellerName(null));
+    } else {
+      setSellerName(null);
+    }
+  }, [result, listingId]);
+
   if (authLoading) return null;
   if (!user) return null;
 
@@ -126,6 +164,28 @@ const LandSearch = () => {
             <CardHeader>
               <CardTitle className="font-display text-xl">What do you already know about this plot?</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">Choose how you'd like to find it. You only need one of these.</p>
+              {notVerifiedBanner && (
+                <div className="mt-3 flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-amber-600" />
+                  <div>
+                    <p className="font-medium">Plot not yet verified</p>
+                    <p className="text-amber-700 mt-0.5">
+                      The seller hasn't verified this plot on PlotSure yet. Enter the Volume and Folio to verify it yourself.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-auto p-0 text-amber-700 hover:text-amber-900 underline"
+                      onClick={() => {
+                        updateForm({ searchMethod: "title" });
+                        setNotVerifiedBanner(false);
+                      }}
+                    >
+                      I have the title details
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Path selector cards */}
@@ -310,9 +370,11 @@ const LandSearch = () => {
                   <div className="flex justify-between"><span className="text-muted-foreground">Registered Owner</span><span className="font-medium">{result.registeredOwner ? (
                     result.registeredOwner
                   ) : (
-                    <a href="https://ugnlis.go.ug" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80 inline-flex items-center gap-1">
-                      Not available — verify at UgNLIS.go.ug <ExternalLink className="h-3 w-3" />
-                    </a>
+                    sellerName ? (
+                      <span className="text-foreground">{sellerName}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Title not registered — seller info unavailable</span>
+                    )
                   )}</span></div>
                   <div className="flex justify-between items-center"><span className="text-muted-foreground">Title Status</span>
                     <span className={`px-2 py-0.5 rounded text-xs font-bold ${result.titleStatus === "CLEAN" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{result.titleStatus}</span>

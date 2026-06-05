@@ -24,5 +24,11 @@ class Settings:
     # Cache TTL (seconds) — 24 hours
     CACHE_TTL_SECONDS: int = 86400
 
+    # Kafka / Redpanda
+    KAFKA_BOOTSTRAP_SERVERS: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+    KAFKA_TOPIC_FRAUD_CHECK: str = os.getenv("KAFKA_TOPIC_FRAUD_CHECK", "fraud.check.queue")
+    KAFKA_TOPIC_DEAD_LETTER: str = os.getenv("KAFKA_TOPIC_DEAD_LETTER", "fraud.check.failed")
+    KAFKA_GROUP_ID: str = os.getenv("KAFKA_GROUP_ID", "plotsure-fraud-workers")
+
 
 settings = Settings()

@@ -12,3 +12,4 @@ Pillow>=9.0.0
 scikit-learn==1.5.2
 numpy==2.0.2
 neo4j>=5.27.0
+kafka-python-ng

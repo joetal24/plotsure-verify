@@ -293,6 +293,7 @@ export interface ListingResponse {
   price_max?: number;
   description?: string;
   contact_preference: string;
+  contact_phone?: string;
   views_count: number;
   created_at: string;
   updated_at: string;
@@ -327,6 +328,7 @@ export interface ListingCreateRequest {
   price_max: number;
   description?: string;
   contact_preference: "email" | "phone" | "both";
+  contact_phone?: string;
   listing_status?: "PENDING" | "ACTIVE";
   latitude?: number;
   longitude?: number;
@@ -344,6 +346,7 @@ export interface ListingUpdateRequest {
   price_max?: number;
   description?: string;
   contact_preference?: "email" | "phone" | "both";
+  contact_phone?: string;
   listing_status?: "PENDING" | "ACTIVE";
   latitude?: number;
   longitude?: number;
@@ -353,7 +356,7 @@ export interface ListingUpdateRequest {
 }
 
 export async function getListings(page = 1): Promise<ListingsResponse> {
-  return apiFetch<ListingsResponse>(`/listings?page=${page}`);
+  return publicApiFetch<ListingsResponse>(`/listings?page=${page}`);
 }
 
 export async function getMyListings(page = 1, status?: string): Promise<ListingsResponse> {
@@ -363,7 +366,7 @@ export async function getMyListings(page = 1, status?: string): Promise<Listings
 }
 
 export async function getListing(id: string): Promise<ListingResponse> {
-  return apiFetch<ListingResponse>(`/listings/${id}`);
+  return publicApiFetch<ListingResponse>(`/listings/${id}`);
 }
 
 export async function createListing(data: ListingCreateRequest): Promise<ListingResponse> {
@@ -388,6 +391,18 @@ export async function updateListingStatus(
     method: "PATCH",
     body: JSON.stringify({ listing_status: status }),
   });
+}
+
+// --- Seller Contact ---
+export interface SellerContact {
+  name: string;
+  email: string;
+  contact_phone: string;
+  contact_preference: string;
+}
+
+export async function getListingSeller(id: string): Promise<SellerContact> {
+  return apiFetch<SellerContact>(`/listings/${id}/seller`);
 }
 
 // --- Inquiries ---
@@ -552,6 +567,23 @@ export function transformPersonToGraph(
   }
 
   return { nodes, edges };
+}
+
+export interface MarketInsightsResponse {
+  total_searches: number;
+  top_districts: { district: string; search_count: number }[];
+  risk_distribution: {
+    LOW: number;
+    MEDIUM: number;
+    HIGH: number;
+    total_verified: number;
+  };
+  monthly_volume: { month: string; count: number }[];
+  top_plot_units: { unit: string; count: number }[];
+}
+
+export async function fetchMarketInsights(): Promise<MarketInsightsResponse> {
+  return apiFetch<MarketInsightsResponse>("/analytics/market-insights");
 }
 
 export async function fetchOwnershipChain(

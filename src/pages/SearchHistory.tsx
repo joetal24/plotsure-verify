@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Download, Search, Loader2 } from "lucide-react";
+import { FileText, Search, Loader2 } from "lucide-react";
 
 const SearchHistory = () => {
   const { user, loading: authLoading } = useAuth();
@@ -92,9 +92,6 @@ const SearchHistory = () => {
                               navigate("/search?step=3");
                             }}>
                               <FileText className="mr-1 h-3 w-3" /> View
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => navigate(`/certificate/${s.id}`)}>
-                              <Download className="mr-1 h-3 w-3" /> Cert
                             </Button>
                           </div>
                         </TableCell>

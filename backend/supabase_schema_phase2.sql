@@ -92,14 +92,6 @@ INSERT INTO public.price_history (district, price_per_sqm, price_per_acre, prope
 ('Kaabong', 5000, 5000000, 'residential', 'very_low');
 
 -- ============================================
--- Certificates table enhancement
--- ============================================
-ALTER TABLE public.certificates
-ADD COLUMN IF NOT EXISTS qr_code TEXT,
-ADD COLUMN IF NOT EXISTS file_size INTEGER,
-ADD COLUMN IF NOT EXISTS verification_url TEXT;
-
--- ============================================
 -- Searches table enhancement
 -- ============================================
 ALTER TABLE public.searches
@@ -109,7 +101,8 @@ ADD COLUMN IF NOT EXISTS price_category TEXT,
 ADD COLUMN IF NOT EXISTS property_type TEXT DEFAULT 'residential',
 ADD COLUMN IF NOT EXISTS fraud_score NUMERIC,
 ADD COLUMN IF NOT EXISTS fraud_risk_level TEXT,
-ADD COLUMN IF NOT EXISTS anomaly_flags JSONB DEFAULT '[]'::jsonb;
+ADD COLUMN IF NOT EXISTS anomaly_flags JSONB DEFAULT '[]'::jsonb,
+ADD COLUMN IF NOT EXISTS ml_anomaly_score NUMERIC DEFAULT 0;
 
 -- ============================================
 -- Enable RLS on price_history
@@ -144,6 +137,12 @@ $$ LANGUAGE plpgsql;
 GRANT SELECT ON public.price_history TO anon, authenticated;
 GRANT INSERT ON public.price_history TO anon, authenticated;
 GRANT ALL ON public.price_history TO service_role;
+
+-- ============================================
+-- Add contact_phone to land_listings
+-- ============================================
+ALTER TABLE public.land_listings
+ADD COLUMN IF NOT EXISTS contact_phone TEXT;
 
 -- ============================================
 -- Notes

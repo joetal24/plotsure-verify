@@ -3,18 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { supabase } from "@/lib/supabase";
+import { fetchMarketInsights, type MarketInsightsResponse } from "@/lib/api";
 import AppTopBar from "@/components/AppTopBar";
 import RiskBadge from "@/components/RiskBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, AlertTriangle, Bookmark, Loader2, RefreshCw } from "lucide-react";
+import { Search, AlertTriangle, Bookmark, Loader2, RefreshCw, TrendingUp, MapPin, Shield, BarChart3 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 
 const BuyerDashboard = () => {
   const { user } = useAuth();
   const { searches, setCurrentResult, fetchHistory, loading, error } = useSearch();
   const navigate = useNavigate();
   const [savedCount, setSavedCount] = useState<number | null>(null);
+
+  const [insights, setInsights] = useState<MarketInsightsResponse | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -31,6 +36,14 @@ const BuyerDashboard = () => {
     };
     load();
   }, [user, fetchHistory]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchMarketInsights()
+      .then(setInsights)
+      .catch(() => {})
+      .finally(() => setInsightsLoading(false));
+  }, [user]);
 
   if (!user) return null;
 
@@ -56,6 +69,14 @@ const BuyerDashboard = () => {
   };
 
   const roleLabel = user.role === "admin" ? "Admin" : "Land Buyer";
+
+  const maxDistrictCount = insights
+    ? Math.max(...insights.top_districts.map(d => d.search_count), 1)
+    : 1;
+
+  const rd = insights?.risk_distribution;
+  const totalV = rd?.total_verified ?? 0;
+  const lowPct = totalV > 0 ? Math.round(((rd?.LOW ?? 0) / totalV) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -137,6 +158,120 @@ const BuyerDashboard = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Uganda Land Market Insights */}
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-display font-bold">Uganda Land Market Insights</h2>
+              <p className="text-sm text-muted-foreground">Based on PlotSure verification data</p>
+            </div>
+            {insights && (
+              <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full whitespace-nowrap">
+                {insights.total_searches.toLocaleString()} verifications and counting
+              </span>
+            )}
+          </div>
+
+          {insightsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
+                    <div className="h-3 bg-muted animate-pulse rounded w-3/4" />
+                    <div className="h-12 bg-muted animate-pulse rounded" />
+                    <div className="h-3 bg-muted animate-pulse rounded w-1/3" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : insights ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Card A — Most Active Districts */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="font-display font-semibold text-sm">Most Active Districts</h3>
+                  </div>
+                  {insights.top_districts.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No district data yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {insights.top_districts.map((d, i) => (
+                        <div key={d.district}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className={i === 0 ? "font-semibold text-foreground" : "text-muted-foreground"}>
+                              {d.district}
+                            </span>
+                            <span className="text-muted-foreground">{d.search_count.toLocaleString()}</span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${i === 0 ? "bg-[#1e293b]" : "bg-muted-foreground/30"}`}
+                              style={{ width: `${(d.search_count / maxDistrictCount) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Card B — Risk Level Breakdown */}
+              {totalV > 0 && (
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-display font-semibold text-sm">Risk Level Breakdown</h3>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                      {[
+                        { label: "LOW", value: rd?.LOW ?? 0, color: "text-emerald-600", bg: "bg-emerald-50" },
+                        { label: "MEDIUM", value: rd?.MEDIUM ?? 0, color: "text-amber-600", bg: "bg-amber-50" },
+                        { label: "HIGH", value: rd?.HIGH ?? 0, color: "text-red-600", bg: "bg-red-50" },
+                      ].map(s => (
+                        <div key={s.label} className={`rounded-lg p-3 text-center ${s.bg}`}>
+                          <p className={`text-lg font-bold ${s.color}`}>{s.value.toLocaleString()}</p>
+                          <p className={`text-[11px] font-medium ${s.color}`}>{s.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{totalV > 0 ? Math.round((s.value / totalV) * 100) : 0}%</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {lowPct}% of verified plots in Uganda show low fraud risk
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Card C — Verification Trend */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="font-display font-semibold text-sm">Verification Trend</h3>
+                  </div>
+                  {insights.monthly_volume.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No data for the last 6 months.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={160}>
+                      <LineChart data={insights.monthly_volume}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
+                        <Line type="monotone" dataKey="count" stroke="#1e293b" strokeWidth={2} dot={{ r: 3, fill: "#1e293b" }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
+        </div>
       </main>
     </div>
   );

@@ -39,6 +39,7 @@ const AddListing = () => {
   const fetchedRef = useRef(false);
   const [step, setStep] = useState<"verify" | "details">("verify");
   const [loading, setLoading] = useState(isEdit);
+  const [formLoading, setFormLoading] = useState(isEdit);
   const [verifying, setVerifying] = useState(false);
   const [verifiedData, setVerifiedData] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -65,6 +66,7 @@ const AddListing = () => {
     price_max: "",
     description: "",
     contact_preference: "both" as "email" | "phone" | "both",
+    contact_phone: "",
     listing_status: "PENDING" as "PENDING" | "ACTIVE",
     latitude: "",
     longitude: "",
@@ -72,6 +74,8 @@ const AddListing = () => {
     parish: "",
     area_acres: "",
   });
+
+  const [phoneErr, setPhoneErr] = useState("");
 
   useEffect(() => {
     document.title = isEdit ? "Edit Listing ◇ PS" : "Add Listing ◇ PS";
@@ -110,6 +114,7 @@ const AddListing = () => {
         price_max: data.price_max?.toString() || "",
         description: data.description || "",
         contact_preference: (data.contact_preference as any) || "both",
+        contact_phone: data.contact_phone || "",
         listing_status: (data.listing_status === "ACTIVE" ? "ACTIVE" : "PENDING") as "PENDING" | "ACTIVE",
         latitude: data.latitude?.toString() || "",
         longitude: data.longitude?.toString() || "",
@@ -117,6 +122,7 @@ const AddListing = () => {
         parish: data.parish || "",
         area_acres: data.area_acres?.toString() || "",
       });
+      setFormLoading(false);
       setCoordErrors({ lat: "", lng: "" });
       if (data.plot_reference) {
         setVerifiedData(data);
@@ -136,6 +142,40 @@ const AddListing = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (formLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppTopBar />
+        <main className="container mx-auto px-4 py-8 max-w-2xl">
+          <div className="h-8 bg-muted animate-pulse rounded w-48 mb-8" />
+          <Card>
+            <CardContent className="p-6 space-y-5">
+              <div className="h-5 bg-muted animate-pulse rounded w-64" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="h-10 bg-muted animate-pulse rounded" />
+                <div className="h-10 bg-muted animate-pulse rounded" />
+              </div>
+              <div className="h-10 bg-muted animate-pulse rounded" />
+              <div className="border-t pt-4 space-y-3">
+                <div className="h-4 bg-muted animate-pulse rounded w-32" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="h-10 bg-muted animate-pulse rounded" />
+                  <div className="h-10 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-[300px] bg-muted animate-pulse rounded" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="h-10 bg-muted animate-pulse rounded" />
+                  <div className="h-10 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-10 bg-muted animate-pulse rounded" />
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
@@ -170,11 +210,25 @@ const AddListing = () => {
     }
   };
 
+  const validatePhone = (phone: string): string => {
+    if (!phone) return "Phone number is required";
+    if (!/^\d+$/.test(phone)) return "Phone number must contain digits only";
+    if (phone.length !== 10) return "Phone number must be exactly 10 digits";
+    if (!phone.startsWith("07")) return "Phone number must start with 07";
+    return "";
+  };
+
   const handleSaveListing = async () => {
     if (!listingForm.county || !listingForm.village || !listingForm.specific_area) {
       toast({ title: "Error", description: "Fill in all location details", variant: "destructive" });
       return;
     }
+    const phoneError = validatePhone(listingForm.contact_phone);
+    if (phoneError) {
+      setPhoneErr(phoneError);
+      return;
+    }
+    setPhoneErr("");
 
     setSaving(true);
     try {
@@ -189,6 +243,7 @@ const AddListing = () => {
         price_max: isNaN(priceMax) ? undefined : priceMax,
         description: listingForm.description || undefined,
         contact_preference: listingForm.contact_preference,
+        contact_phone: listingForm.contact_phone || undefined,
         listing_status: listingForm.listing_status,
         latitude: listingForm.latitude ? parseFloat(listingForm.latitude) : undefined,
         longitude: listingForm.longitude ? parseFloat(listingForm.longitude) : undefined,
@@ -439,6 +494,20 @@ const AddListing = () => {
                   onChange={e => setListingForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="Describe your property..."
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Contact Phone Number *</Label>
+                <Input
+                  type="tel"
+                  value={listingForm.contact_phone}
+                  onChange={e => {
+                    setListingForm(f => ({ ...f, contact_phone: e.target.value }));
+                    if (phoneErr) setPhoneErr("");
+                  }}
+                  placeholder="e.g. 0712345678"
+                />
+                {phoneErr && <p className="text-xs text-destructive mt-1">{phoneErr}</p>}
               </div>
 
               <div className="space-y-2">

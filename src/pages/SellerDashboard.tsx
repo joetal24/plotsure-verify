@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Eye, CheckCircle, ClipboardList, Package, ShieldCheck, AlertTriangle, Clock, MessageSquare, Mail, Phone, MapPin, ThumbsUp } from "lucide-react";
+import { Loader2, Plus, Eye, CheckCircle, ClipboardList, Package, ShieldCheck, AlertTriangle, Clock, MessageSquare, Mail, Phone, MapPin, ThumbsUp, Info } from "lucide-react";
 
 const SellerDashboard = () => {
   const { user, loading: authLoading } = useAuth();
@@ -18,6 +18,9 @@ const SellerDashboard = () => {
   const listingsFetched = useRef(false);
   const [listings, setListings] = useState<ListingResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inquiriesOpen, setInquiriesOpen] = useState(false);
+  const [inquiries, setInquiries] = useState<InquiryResponse[]>([]);
+  const [inquiriesLoading, setInquiriesLoading] = useState(false);
 
   useEffect(() => {
     document.title = "My Listings ◇ PS";

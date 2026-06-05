@@ -33,25 +33,13 @@ CREATE TABLE IF NOT EXISTS public.searches (
     fraud_score NUMERIC,
     fraud_risk_level TEXT CHECK (fraud_risk_level IN ('LOW', 'MEDIUM', 'HIGH')),
     anomaly_flags JSONB DEFAULT '[]'::jsonb,
+    ml_anomaly_score NUMERIC DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Index for cache lookups (plot_reference + created_at)
 CREATE INDEX IF NOT EXISTS idx_searches_plot_ref ON public.searches(plot_reference, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_searches_user ON public.searches(user_id, created_at DESC);
-
--- 3. Certificates table
-CREATE TABLE IF NOT EXISTS public.certificates (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    search_id UUID NOT NULL REFERENCES public.searches(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    hash TEXT NOT NULL UNIQUE,
-    file_url TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Index for hash verification lookups
-CREATE INDEX IF NOT EXISTS idx_certificates_hash ON public.certificates(hash);
 
 -- ============================================
 -- Row Level Security (RLS)
@@ -61,8 +49,6 @@ CREATE INDEX IF NOT EXISTS idx_certificates_hash ON public.certificates(hash);
 -- Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.searches ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
-
 -- Users: can only read their own profile
 CREATE POLICY "Users can view own profile"
     ON public.users FOR SELECT
@@ -81,23 +67,8 @@ CREATE POLICY "Users can insert own searches"
     ON public.searches FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
--- Certificates: users can view their own, anyone can verify by hash
-CREATE POLICY "Users can view own certificates"
-    ON public.certificates FOR SELECT
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own certificates"
-    ON public.certificates FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
 -- Service role bypass (for backend using service_role key)
 -- The service_role key bypasses RLS by default in Supabase.
-
--- ============================================
--- Storage bucket for certificate PDFs
--- ============================================
--- Run this separately or create via Supabase dashboard:
--- INSERT INTO storage.buckets (id, name, public) VALUES ('certificates', 'certificates', true);
 
 -- ============================================
 -- Auto-create user profile on signup
@@ -143,6 +114,7 @@ CREATE TABLE IF NOT EXISTS public.land_listings (
     price_max NUMERIC,
     description TEXT,
     contact_preference TEXT DEFAULT 'both' CHECK (contact_preference IN ('email', 'phone', 'both')),
+    contact_phone TEXT CHECK (contact_phone ~ '^07[0-9]{8}$'),
     views_count INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
