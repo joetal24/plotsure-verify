@@ -1,14 +1,16 @@
 """
-Admin endpoints — manual retry for failed fraud checks.
+Admin endpoints — system management.
 Protected by admin role check.
+Admin is a pre-created system role, not available in user registration.
 """
 import asyncio
 import json
 import logging
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from typing import Optional
 
-from app.auth import get_current_user
+from app.auth import get_current_user, create_system_admin
 from app.database import get_supabase
 from app.schemas import AdminRetryResponse
 from app.services.fraud_detection import score_fraud
@@ -26,6 +28,25 @@ def _require_admin(user: dict) -> None:
         roles = [roles]
     if "admin" not in [r.lower() for r in roles]:
         raise HTTPException(status_code=403, detail="Admin access required")
+
+
+# System admin creation request
+SYSTEM_ADMIN_EMAIL = "admin@plotsure.ug"  # Change this to your preferred admin email
+
+
+@router.post("/system-admin/create", response_model=dict)
+async def create_system_admin_endpoint(
+    user: dict = Depends(get_current_user),
+    background_tasks: BackgroundTasks = None
+):
+    """
+    POST /admin/system-admin/create
+
+    Creates the initial system admin user. Should be run once during deployment.
+    Requires the currently authenticated user to be a system admin.
+    """
+    _require_admin(user)
+    return await create_system_admin()
 
 
 @router.post("/retry/{verification_id}", response_model=AdminRetryResponse)

@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { registerLocalUser, loginViaBackend } from "@/lib/api";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-export type UserRole = "land_buyer" | "land_seller" | "admin";
+export type UserRole = "land_buyer" | "land_seller";
 
 export interface User {
   id: string;

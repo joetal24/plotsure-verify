@@ -3,13 +3,11 @@ import type { UserRole } from "@/contexts/AuthContext";
 const roleLabels: Record<UserRole, string> = {
   "land_buyer": "Land Buyer",
   "land_seller": "Land Seller",
-  "admin": "Admin",
 };
 
 const roleStyles: Record<UserRole, string> = {
   "land_buyer": "bg-primary/10 text-primary border-primary/20",
   "land_seller": "bg-green-100 text-green-700 border-green-200",
-  "admin": "bg-warning/10 text-warning border-warning/20",
 };
 
 const RoleBadge = ({ role }: { role: UserRole }) => (

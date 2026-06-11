@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 import httpx
+import secrets
 from app.config import settings
 
 security = HTTPBearer(auto_error=False)
@@ -95,3 +96,68 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token verification failed: {str(e)}",
         )
+
+
+# System admin creation
+SYSTEM_ADMIN_EMAIL = "admin@plotsure.ug"  # Should be configured via env
+SYSTEM_ADMIN_PASSWORD = secrets.token_urlsafe(32)  # Auto-generate, must be stored
+
+
+async def create_system_admin() -> dict:
+    """
+    Create the initial system admin user.
+    
+    This function should be called once during deployment.
+    
+    Returns:
+        dict: The created admin user's email and temporary password
+    """
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supabase admin auth is not configured",
+        )
+
+    admin_headers = {
+        "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    admin_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/admin/users"
+
+    payload = {
+        "email": SYSTEM_ADMIN_EMAIL,
+        "password": SYSTEM_ADMIN_PASSWORD,
+        "email_confirm": True,
+        "user_metadata": {
+            "name": "System Administrator",
+            "role": "admin",
+            "roles": ["admin"],
+            "is_system_admin": True,
+        },
+        "app_metadata": {
+            "role": "admin",
+        }
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(admin_url, json=payload, headers=admin_headers)
+
+    if response.status_code >= 400:
+        detail = "Failed to create system admin"
+        try:
+            data = response.json()
+            detail = data.get("msg") or data.get("error_description") or data.get("message") or detail
+        except Exception:
+            detail = response.text or detail
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail,
+        )
+
+    return {
+        "email": SYSTEM_ADMIN_EMAIL,
+        "password": SYSTEM_ADMIN_PASSWORD,
+        "message": "System admin created successfully. Please store the password securely."
+    }

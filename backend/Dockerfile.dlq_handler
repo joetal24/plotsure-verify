@@ -1,0 +1,22 @@
+# ============================================
+# PlotSure DLQ Handler Dockerfile
+# ============================================
+# Build: docker build -t plotsure-dlq -f Dockerfile.dlq_handler ..
+# Run:   docker run -p 8000:8000 --env-file .env plotsure-dlq
+# ============================================
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app/ app/
+
+CMD ["sh", "-c", "python -m app.workers.dlq_handler"]

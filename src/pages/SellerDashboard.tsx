@@ -183,7 +183,7 @@ const SellerDashboard = () => {
                         <TableCell>{l.views_count}</TableCell>
                         <TableCell className="flex gap-1">
                           <Button variant="outline" size="sm" onClick={() => navigate(`/sell/edit/${l.id}`)}>Edit</Button>
-                          {l.listing_status === "PENDING" && user.role === "admin" && (
+
                             <Button variant="default" size="sm" onClick={() => approveListing(l.id)}>
                               <ThumbsUp className="h-3.5 w-3.5 mr-1" /> Approve
                             </Button>

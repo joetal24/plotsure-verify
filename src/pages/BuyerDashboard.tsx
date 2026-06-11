@@ -68,7 +68,7 @@ const BuyerDashboard = () => {
     }
   };
 
-  const roleLabel = user.role === "admin" ? "Admin" : "Land Buyer";
+  const roleLabel = user.role === "land_seller" ? "Land Seller" : "Land Buyer";
 
   const maxDistrictCount = insights
     ? Math.max(...insights.top_districts.map(d => d.search_count), 1)
