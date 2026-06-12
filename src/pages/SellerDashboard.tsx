@@ -184,10 +184,6 @@ const SellerDashboard = () => {
                         <TableCell className="flex gap-1">
                           <Button variant="outline" size="sm" onClick={() => navigate(`/sell/edit/${l.id}`)}>Edit</Button>
 
-                            <Button variant="default" size="sm" onClick={() => approveListing(l.id)}>
-                              <ThumbsUp className="h-3.5 w-3.5 mr-1" /> Approve
-                            </Button>
-                          )}
                         </TableCell>
                       </TableRow>
                       );
