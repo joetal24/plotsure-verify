@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Vercel
+.vercel
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -65,3 +68,4 @@ DEPLOY.md
 .gitignore
 docs/ADMIN_ROLE_CHANGES.md
 JoelTalemwa_012230088.docx
+.gitignore
