@@ -30,5 +30,8 @@ class Settings:
     KAFKA_TOPIC_DEAD_LETTER: str = os.getenv("KAFKA_TOPIC_DEAD_LETTER", "fraud.check.failed")
     KAFKA_GROUP_ID: str = os.getenv("KAFKA_GROUP_ID", "plotsure-fraud-workers")
 
+    # Deployment
+    SYSTEM_ADMIN_EMAIL: str = os.getenv("SYSTEM_ADMIN_EMAIL", "admin@plotsure.ug")
+
 
 settings = Settings()

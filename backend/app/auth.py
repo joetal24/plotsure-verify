@@ -99,7 +99,6 @@ async def get_current_user(
 
 
 # System admin creation
-SYSTEM_ADMIN_EMAIL = "admin@plotsure.ug"  # Should be configured via env
 SYSTEM_ADMIN_PASSWORD = secrets.token_urlsafe(32)  # Auto-generate, must be stored
 
 
@@ -127,7 +126,7 @@ async def create_system_admin() -> dict:
     admin_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/admin/users"
 
     payload = {
-        "email": SYSTEM_ADMIN_EMAIL,
+        "email": settings.SYSTEM_ADMIN_EMAIL,
         "password": SYSTEM_ADMIN_PASSWORD,
         "email_confirm": True,
         "user_metadata": {
@@ -157,7 +156,7 @@ async def create_system_admin() -> dict:
         )
 
     return {
-        "email": SYSTEM_ADMIN_EMAIL,
+        "email": settings.SYSTEM_ADMIN_EMAIL,
         "password": SYSTEM_ADMIN_PASSWORD,
         "message": "System admin created successfully. Please store the password securely."
     }

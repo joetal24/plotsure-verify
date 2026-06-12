@@ -30,8 +30,7 @@ def _require_admin(user: dict) -> None:
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
-# System admin creation request
-SYSTEM_ADMIN_EMAIL = "admin@plotsure.ug"  # Change this to your preferred admin email
+# System admin email defaults to settings.SYSTEM_ADMIN_EMAIL
 
 
 @router.post("/system-admin/create", response_model=dict)

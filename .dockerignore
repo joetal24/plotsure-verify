@@ -1,39 +1,26 @@
 # ============================================
-# Docker Ignore File
+# Docker Ignore — PlotSure Backend
 # ============================================
 
 # Git
 .git
 .gitignore
 
-# Backend Python environment
-backend/venv
-backend/.venv
-backend/__pycache__
-backend/*.pyc
-backend/*.pyo
-backend/.env
-backend/.env.local
-
-# Frontend environment (secrets)
+# Secrets (NEVER ship these into the image)
 .env
 .env.local
 .env.*.local
 
-# Documentation
-README.md
-ANTIGRAVITY.md
-LICENSE
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv
+venv/
 
-# Test files
-src/test
-*.test.ts
-*.test.tsx
-
-# CI/CD
-.github
-.gitlab-ci.yml
-enkinsfile
+# Tests (not needed at runtime)
+/tests
 
 # IDE
 .vscode
@@ -46,13 +33,44 @@ enkinsfile
 Thumbs.db
 
 # Logs
-logs
 *.log
+logs/
 
-# Node (will be rebuilt in container)
+# Docker
+*.dockerignore
+
+# Node / Frontend (not needed in backend image)
 node_modules
-
-venv
-__pycache__
 dist
-build
+public
+src/
+index.html
+vite.config.ts
+vitest.config.ts
+tailwind.config.ts
+tsconfig*.json
+eslint.config.js
+postcss.config.js
+package.json
+package-lock.json
+components.json
+
+# Reports / Docs (not needed at runtime)
+*.docx
+*.md
+*.txt
+ARCHITECTURE.md
+PROJECT.md
+PROJECT_SUMMARY.md
+README.md
+docs/
+
+# Railway artifacts (not needed on Fly.io)
+railway.toml
+Procfile
+backend/Dockerfile.fraud_worker
+backend/Dockerfile.dlq_handler
+backend/Dockerfile
+
+# OpenCode
+.opencode
