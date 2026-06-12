@@ -1,0 +1,39 @@
+# ============================================
+# Render.com Configuration — plotsure-verify
+# ============================================
+services:
+  - type: web
+    name: plotsure-verify
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_PUBLIC_URL
+        sync: false
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USERNAME
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_TOPIC_FRAUD_CHECK
+        sync: false
+      - key: KAFKA_TOPIC_DEAD_LETTER
+        sync: false
+      - key: KAFKA_GROUP_ID
+        sync: false
+      - key: SYSTEM_ADMIN_EMAIL
+        sync: false

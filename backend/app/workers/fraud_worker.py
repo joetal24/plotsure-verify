@@ -176,11 +176,19 @@ def process_message(message: dict) -> None:
 
 def consume() -> None:
     """Main consumer loop."""
+    kafka_servers = settings.KAFKA_BOOTSTRAP_SERVERS
+    if not kafka_servers or kafka_servers == "localhost:9092":
+        logger.warning(
+            "Kafka not configured (KAFKA_BOOTSTRAP_SERVERS not set) — "
+            "fraud worker cannot start. Set the env var to enable async processing."
+        )
+        return
+
     consumer: Optional[KafkaConsumer] = None
     try:
         consumer = KafkaConsumer(
             settings.KAFKA_TOPIC_FRAUD_CHECK,
-            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+            bootstrap_servers=kafka_servers,
             group_id=settings.KAFKA_GROUP_ID,
             value_deserializer=lambda v: json.loads(v.decode()),
             auto_offset_reset="earliest",

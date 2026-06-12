@@ -56,11 +56,19 @@ def store_failure(
 
 def consume() -> None:
     """Consume messages from the dead letter queue topic."""
+    kafka_servers = settings.KAFKA_BOOTSTRAP_SERVERS
+    if not kafka_servers or kafka_servers == "localhost:9092":
+        logger.warning(
+            "Kafka not configured (KAFKA_BOOTSTRAP_SERVERS not set) — "
+            "DLQ handler cannot start. Set the env var to enable DLQ processing."
+        )
+        return
+
     consumer: KafkaConsumer | None = None
     try:
         consumer = KafkaConsumer(
             settings.KAFKA_TOPIC_DEAD_LETTER,
-            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+            bootstrap_servers=kafka_servers,
             group_id=f"{settings.KAFKA_GROUP_ID}-dlq",
             value_deserializer=lambda v: json.loads(v.decode()),
             auto_offset_reset="earliest",

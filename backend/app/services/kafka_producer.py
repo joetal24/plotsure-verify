@@ -28,17 +28,22 @@ def _serialize(value: dict) -> bytes:
 def _get_producer() -> Optional[KafkaProducer]:
     global _producer
     if _producer is None:
+        kafka_servers = settings.KAFKA_BOOTSTRAP_SERVERS
+        if not kafka_servers or kafka_servers == "localhost:9092":
+            logger.warning(
+                "Kafka not configured (KAFKA_BOOTSTRAP_SERVERS not set) — "
+                "fraud checks will run synchronously"
+            )
+            return None
         try:
             _producer = KafkaProducer(
-                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                bootstrap_servers=kafka_servers,
                 client_id="plotsure-producer",
                 value_serializer=_serialize,
                 max_block_ms=3000,
                 request_timeout_ms=5000,
             )
-            logger.info(
-                "Kafka producer connected — %s", settings.KAFKA_BOOTSTRAP_SERVERS
-            )
+            logger.info("Kafka producer connected — %s", kafka_servers)
         except Exception as exc:
             logger.warning("Kafka producer failed to connect: %s — falling back to sync", exc)
             _producer = None
