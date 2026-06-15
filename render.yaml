@@ -27,13 +27,11 @@ services:
         sync: false
       - key: NEO4J_PASSWORD
         sync: false
-      - key: KAFKA_BOOTSTRAP_SERVERS
+      - key: REDPANDA_BROKERS
         sync: false
-      - key: KAFKA_TOPIC_FRAUD_CHECK
+      - key: REDPANDA_USERNAME
         sync: false
-      - key: KAFKA_TOPIC_DEAD_LETTER
-        sync: false
-      - key: KAFKA_GROUP_ID
+      - key: REDPANDA_PASSWORD
         sync: false
       - key: SYSTEM_ADMIN_EMAIL
         sync: false

@@ -56,27 +56,28 @@ def store_failure(
 
 def consume() -> None:
     """Consume messages from the dead letter queue topic."""
-    kafka_servers = settings.KAFKA_BOOTSTRAP_SERVERS
-    if not kafka_servers or kafka_servers == "localhost:9092":
+    brokers = settings.kafka_brokers
+    if not brokers or brokers == "localhost:9092":
         logger.warning(
-            "Kafka not configured (KAFKA_BOOTSTRAP_SERVERS not set) — "
+            "Kafka not configured (REDPANDA_BROKERS / KAFKA_BOOTSTRAP_SERVERS not set) — "
             "DLQ handler cannot start. Set the env var to enable DLQ processing."
         )
         return
 
     consumer: KafkaConsumer | None = None
     try:
+        consumer_config = settings.kafka_security_config
+        consumer_config["group_id"] = f"{settings.KAFKA_GROUP_ID}-dlq"
+        consumer_config["value_deserializer"] = lambda v: json.loads(v.decode())
+        consumer_config["auto_offset_reset"] = "earliest"
+        consumer_config["enable_auto_commit"] = True
         consumer = KafkaConsumer(
-            settings.KAFKA_TOPIC_DEAD_LETTER,
-            bootstrap_servers=kafka_servers,
-            group_id=f"{settings.KAFKA_GROUP_ID}-dlq",
-            value_deserializer=lambda v: json.loads(v.decode()),
-            auto_offset_reset="earliest",
-            enable_auto_commit=True,
+            settings.REDPANDA_DLQ_TOPIC,
+            **consumer_config,
         )
         logger.info(
             "DLQ handler started — consuming from %s",
-            settings.KAFKA_TOPIC_DEAD_LETTER,
+            settings.REDPANDA_DLQ_TOPIC,
         )
 
         for raw in consumer:

@@ -28,22 +28,21 @@ def _serialize(value: dict) -> bytes:
 def _get_producer() -> Optional[KafkaProducer]:
     global _producer
     if _producer is None:
-        kafka_servers = settings.KAFKA_BOOTSTRAP_SERVERS
-        if not kafka_servers or kafka_servers == "localhost:9092":
+        brokers = settings.kafka_brokers
+        if not brokers or brokers == "localhost:9092":
             logger.warning(
-                "Kafka not configured (KAFKA_BOOTSTRAP_SERVERS not set) — "
+                "Kafka not configured (REDPANDA_BROKERS / KAFKA_BOOTSTRAP_SERVERS not set) — "
                 "fraud checks will run synchronously"
             )
             return None
         try:
-            _producer = KafkaProducer(
-                bootstrap_servers=kafka_servers,
-                client_id="plotsure-producer",
-                value_serializer=_serialize,
-                max_block_ms=3000,
-                request_timeout_ms=5000,
-            )
-            logger.info("Kafka producer connected — %s", kafka_servers)
+            producer_config = settings.kafka_security_config
+            producer_config["client_id"] = "plotsure-producer"
+            producer_config["value_serializer"] = _serialize
+            producer_config["max_block_ms"] = 3000
+            producer_config["request_timeout_ms"] = 5000
+            _producer = KafkaProducer(**producer_config)
+            logger.info("Kafka producer connected — %s", brokers)
         except Exception as exc:
             logger.warning("Kafka producer failed to connect: %s — falling back to sync", exc)
             _producer = None
@@ -80,7 +79,7 @@ def publish_fraud_check(
 
     if producer is not None:
         try:
-            future = producer.send(settings.KAFKA_TOPIC_FRAUD_CHECK, value=message)
+            future = producer.send(settings.REDPANDA_TOPIC, value=message)
             future.get(timeout=5)
             logger.info(
                 "Published fraud check — verification_id=%s plot_id=%s",

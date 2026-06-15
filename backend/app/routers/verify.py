@@ -28,7 +28,10 @@ from app.services.verification import (
     build_plot_reference,
 )
 from app.services.kafka_producer import publish_fraud_check
+from app.services.certificate_service import generate_certificate_pdf, generate_certificate_hash
 from app.config import settings
+from fastapi.responses import StreamingResponse
+import io
 
 router = APIRouter(prefix="/verify", tags=["Verification"])
 limiter = Limiter(key_func=get_remote_address)
@@ -151,6 +154,51 @@ async def verify_plot(
         status="preliminary_verified",
         processing_time_ms=round(elapsed, 1),
     )
+
+
+@router.get("/certificate/{search_id}")
+async def get_certificate_pdf(
+    search_id: str,
+    user: dict = Depends(get_current_user),
+):
+    db = get_supabase()
+    result = (
+        db.table("searches")
+        .select("*")
+        .eq("id", search_id)
+        .eq("user_id", user["id"])
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Search not found")
+    pdf_bytes = generate_certificate_pdf(result.data)
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=certificate-{search_id}.pdf"},
+    )
+
+
+@router.get("/certificate/check/{hash}")
+async def check_certificate_hash(hash: str):
+    db = get_supabase()
+    result = db.table("searches").select("*").limit(1000).execute()
+    for row in result.data or []:
+        if generate_certificate_hash(row) == hash:
+            created_raw = row.get("created_at", "")
+            try:
+                dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                verified_at = dt.isoformat()
+            except (ValueError, AttributeError):
+                verified_at = str(created_raw)
+            return {
+                "valid": True,
+                "plot_number": row.get("plot_reference"),
+                "fraud_risk_label": row.get("fraud_risk_level") or row.get("risk_level"),
+                "verified_at": verified_at,
+            }
+    return {"valid": False}
 
 
 @router.get("/{search_id}", response_model=VerifyResponse)

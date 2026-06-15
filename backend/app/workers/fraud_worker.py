@@ -176,29 +176,30 @@ def process_message(message: dict) -> None:
 
 def consume() -> None:
     """Main consumer loop."""
-    kafka_servers = settings.KAFKA_BOOTSTRAP_SERVERS
-    if not kafka_servers or kafka_servers == "localhost:9092":
+    brokers = settings.kafka_brokers
+    if not brokers or brokers == "localhost:9092":
         logger.warning(
-            "Kafka not configured (KAFKA_BOOTSTRAP_SERVERS not set) — "
+            "Kafka not configured (REDPANDA_BROKERS / KAFKA_BOOTSTRAP_SERVERS not set) — "
             "fraud worker cannot start. Set the env var to enable async processing."
         )
         return
 
     consumer: Optional[KafkaConsumer] = None
     try:
+        consumer_config = settings.kafka_security_config
+        consumer_config["group_id"] = settings.KAFKA_GROUP_ID
+        consumer_config["value_deserializer"] = lambda v: json.loads(v.decode())
+        consumer_config["auto_offset_reset"] = "earliest"
+        consumer_config["enable_auto_commit"] = True
+        consumer_config["session_timeout_ms"] = 30000
+        consumer_config["heartbeat_interval_ms"] = 10000
         consumer = KafkaConsumer(
-            settings.KAFKA_TOPIC_FRAUD_CHECK,
-            bootstrap_servers=kafka_servers,
-            group_id=settings.KAFKA_GROUP_ID,
-            value_deserializer=lambda v: json.loads(v.decode()),
-            auto_offset_reset="earliest",
-            enable_auto_commit=True,
-            session_timeout_ms=30000,
-            heartbeat_interval_ms=10000,
+            settings.REDPANDA_TOPIC,
+            **consumer_config,
         )
         logger.info(
             "Fraud worker started — consuming from %s (group=%s)",
-            settings.KAFKA_TOPIC_FRAUD_CHECK,
+            settings.REDPANDA_TOPIC,
             settings.KAFKA_GROUP_ID,
         )
 
@@ -227,17 +228,16 @@ def _publish_dlq(message: dict, error: Exception) -> None:
     """Publish a failed message to the dead letter queue."""
     from kafka import KafkaProducer
     try:
-        dlq_producer = KafkaProducer(
-            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-            client_id="plotsure-dlq-producer",
-            value_serializer=lambda v: json.dumps(v).encode(),
-        )
+        dlq_config = settings.kafka_security_config
+        dlq_config["client_id"] = "plotsure-dlq-producer"
+        dlq_config["value_serializer"] = lambda v: json.dumps(v).encode()
+        dlq_producer = KafkaProducer(**dlq_config)
         dlq_payload = {
             "original_message": message,
             "error": str(error),
             "failed_at": datetime.utcnow().isoformat(),
         }
-        dlq_producer.send(settings.KAFKA_TOPIC_DEAD_LETTER, value=dlq_payload)
+        dlq_producer.send(settings.REDPANDA_DLQ_TOPIC, value=dlq_payload)
         dlq_producer.flush()
         dlq_producer.close()
         logger.info(
