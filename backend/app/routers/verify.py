@@ -99,7 +99,7 @@ async def verify_plot(
         estimate_price,
         district=district,
         land_type=body.land_type.value,
-        plot_size=body.plot_size,
+        plot_size=body.plot_size or 1.0,
         plot_size_unit=body.plot_size_unit,
     )
     risk_level, (price_min, price_max, _) = await asyncio.gather(risk_task, price_task)

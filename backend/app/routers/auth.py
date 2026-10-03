@@ -78,7 +78,7 @@ async def register_user(body: AuthRegisterRequest):
 
     # Admin role is no longer available via registration - only system admin exists
     # Remove admin from available roles
-    if "admin" in body.roles:
+    if body.roles and "admin" in body.roles:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Admin role can only be assigned via system admin creation",

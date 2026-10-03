@@ -116,9 +116,10 @@ const LandSearch = () => {
           ...form as PlotDetails,
           landType: form.landType || "Freehold",
         });
-        toast({ title: "Analysis complete", description: "Your PlotSure assessment is ready." });
-        setStep(3);
+        toast({ title: "Analysis complete", description: "Redirecting to dashboard..." });
+        window.location.href = "/dashboard";
       } catch (err: any) {
+        console.error("Verification error:", err);
         toast({ title: "Verification failed", description: err.message || "Please try again.", variant: "destructive" });
         setStep(1);
       }
@@ -288,7 +289,7 @@ const LandSearch = () => {
                   <div>
                     <Label>Plot Size <span className="text-muted-foreground text-xs">optional</span></Label>
                     <div className="flex gap-2">
-                      <Input type="number" min={0} placeholder="0" value={form.plotSize || ""} onChange={e => updateForm({ plotSize: parseFloat(e.target.value) || 0 })} className="flex-1" />
+                      <Input type="number" min={0} placeholder="0" value={form.plotSize || ""} onChange={e => updateForm({ plotSize: parseFloat(e.target.value) || undefined })} className="flex-1" />
                       <Select value={form.plotSizeUnit} onValueChange={v => updateForm({ plotSizeUnit: v as any })}>
                         <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                         <SelectContent>

@@ -42,7 +42,7 @@ class VerifyRequest(BaseModel):
     block_number: Optional[str] = None
     plot_number: Optional[str] = None
     land_type: LandType
-    plot_size: float = Field(gt=0)
+    plot_size: Optional[float] = None
     plot_size_unit: str = "Decimals"
     asking_price: Optional[float] = None
     owner_name: Optional[str] = None
